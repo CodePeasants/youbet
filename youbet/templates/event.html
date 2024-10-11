@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<h1>
+    <a href="{{ url_for('main') }}">Events</a>
+    <a>></a>
+    <a>{{ event.name }}</a>
+</h1>
+<h2>Rounds</h2>
+{% if session_user.id == event.creator.id %}
+    <a href="{{ url_for('add_round', event_id=event.id) }}">Create Round</a>
+{% endif %}
+<table class="table">
+    <tr>
+        <th>Name</th>
+        <th>Player 1</th>
+        <th>Odds</th>
+        <th>Player 2</th>
+        <th>Wager</th>
+        <th>Winner</th>
+        {% if session_user.id == event.creator.id %}
+            <th>Edit</th>
+            <th>Delete</th>
+        {% endif %}
+    </tr>
+    {% for round in event.rounds %}
+    <tr>
+        <td>
+            <a href="{{ url_for('round', event_id=event.id, round_id=round.id) }}">{{ round.name }}</a><br>
+        </td>
+        <td>
+            <a>{{ round.competitor_a.name }}</a>
+        </td>
+        <td>{{ round.odds }}</td>
+        <td>
+            <a>{{ round.competitor_b.name }}</a>
+        </td>
+        <td>
+            {% with wager=round_wagers.get(round.id) %}
+                {% include "wager_editor.html" %}
+            {% endwith %}
+        </td>
+        <td>{{ round.winner.name }}</td>
+        {% if session_user.id == event.creator.id %}
+            <td>
+                <a href="{{ url_for('edit_round', event_id=event.id, round_id=round.id) }}">Edit</a>
+            </td>
+            <td>
+                <a href="{{ url_for('remove_round', event_id=event.id, round_id=round.id) }}">Delete</a>
+            </td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+</table>
+
+<h2>Players</h2>
+{% if session_user.id not in event.get_participant_ids() %}
+<a href="{{ url_for('add_event_user', event_id=event.id, user_id=session['user']['id']) }}">Join Event</a>
+{% endif %}
+<table class="table">
+    <tr>
+        <th>Name</th>
+        <th>Money</th>
+        <th>Delete</th>
+    </tr>
+    {% for user in event.get_participants() %}
+    <tr>
+        <td>
+            <a >{{ user.name }}</a><br>
+        </td>
+        <td>
+            <a >{{ event.get_current_money(user) }}</a>
+        </td>
+        {% if session_user.id == user.id or session_user.id == event.creator.id %}
+            <td>
+                <a href="{{ url_for('remove_event_user', event_id=event.id, user_id=user.id) }}">Remove</a>
+            </td>
+        {% else %}
+            <td></td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

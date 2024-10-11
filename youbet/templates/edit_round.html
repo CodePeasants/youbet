@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<h1>
+    <a href="{{ url_for('main') }}">Events</a>
+    <a>></a>
+    <a href="{{ url_for('event', event_id=round.event.id) }}">{{ round.event.name }}</a>
+    <a>></a>
+    <a>{{ round.name }}</a>
+</h1>
+<form action="{{ url_for('edit_round', event_id=round.event.id, round_id=round.id) }}" method="POST">
+    <a>Round Name</a>
+    <input type="text" name="name" placeholder="Name" id="name" value="{{ round.name }}"><br>
+    <a>Player A</a>
+    <select name="player_a">
+        {% for user in round.event.participants %}
+            {% if user.id == round.competitor_a.id %}
+                <option value="{{ user.id }}" selected="selected">{{ user.name }}</option>
+            {% else %}
+                <option value="{{ user.id }}">{{ user.name }}</option>
+            {% endif %}
+        {% endfor %}
+    </select><br>
+    <a>Player B</a>
+    <select name="player_b">
+        {% for user in round.event.participants %}
+            {% if user.id == round.competitor_b.id %}
+                <option value="{{ user.id }}" selected="selected">{{ user.name }}</option>
+            {% else %}
+                <option value="{{ user.id }}">{{ user.name }}</option>
+            {% endif %}
+        {% endfor %}
+    </select><br>
+    <a>Odds (A:B)</a>
+    <input type="text" name="odds" placeholder="Odds (E.g. 2:1)" id="odds" value="{{ round.odds }}"><br>
+    
+    <a>Winner</a>
+    <select name="winner">
+        <option value=""></option>
+        {% if round.competitor_a %}
+            {% if round.competitor_a == round.winner %}
+                <option value="{{ round.competitor_a.id }}" selected="selected">{{ round.competitor_a.name }}</option>
+            {% else %}
+                <option value="{{ round.competitor_a.id }}">{{ round.competitor_a.name }}</option>
+            {% endif%}
+        {% endif %}
+        {% if round.competitor_b %}
+            {% if round.competitor_b == round.winner %}
+                <option value="{{ round.competitor_b.id }}" selected="selected">{{ round.competitor_b.name }}</option>
+            {% else %}
+                <option value="{{ round.competitor_b.id }}">{{ round.competitor_b.name }}</option>
+                {% endif%}
+        {% endif %}
+    </select><br>
+    <a>Accept Wagers</a>
+    {% if round.accept_wagers %}
+        <input type="checkbox" name="accept_wagers" id="accept_wagers" checked><br>
+    {% else %}
+        <input type="checkbox" name="accept_wagers" id="accept_wagers" ><br>
+    {% endif %}
+    <input type="submit" value="Sace Changes" id="submit">
+</form>
+{% endblock %}

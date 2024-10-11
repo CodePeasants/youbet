@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<h1>Account</h1>
+<form action="{{ url_for('account') }}" method="POST">
+    <input type="text" name="name" placeholder="Name" id="name" value="{{ user.name }}"><br>
+    <input type="email" name="email" placeholder="Email" id="email" value="{{ user.email }}"><br>
+    <input type="password" name="password" placeholder="Change Password" id="password"><br>
+    <input type="submit" value="Save Changes" id="submit">
+</form>
+{% endblock %}

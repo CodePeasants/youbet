@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<h1>
+    <a href="{{ url_for('main') }}">Events</a>
+    <a>></a>
+    <a href="{{ url_for('event', event_id=round.event.id) }}">{{ round.event.name }}</a>
+    <a>></a>
+    <a>{{ round.name }}</a>
+</h1>
+<h1>
+{% if round.winner %}
+    {% if round.winner == round.competitor_a %}
+        <a class="text-success">{{ round.competitor_a.name }} (W)</a><a class="text-secondary">[{{round.get_odds()[0]}}]</a><a> VS </a><a class="text-secondary">[{{round.get_odds()[1]}}]</a><a class="text-danger">{{ round.competitor_b.name }} (L)</a><br>
+    {% else %}
+        <a class="text-danger">{{ round.competitor_a.name }} (L)</a><a> VS </a><a class="text-success">{{ round.competitor_b.name }} (W)</a><br>
+    {% endif %}
+{% else %}
+    <a>{{ round.competitor_a.name }}</a><a> VS </a><a>{{ round.competitor_b.name }}</a><br>
+{% endif %}
+</h1>
+
+{% if session.get('user', {}).get('id') == round.event.creator.id %}
+    <a href="{{ url_for('edit_round', event_id=round.event.id, round_id=round.id) }}">Edit Round</a>
+{% endif %}
+
+<h2>Wagers</h2>
+<table class="table">
+    <tr>
+        <th>Player</th>
+        <th>Stake</th>
+        <th>Wager</th>
+        <th>Outcome</th>
+        <th>Delete</th>
+    </tr>
+    {% for wager in round.wagers %}
+    <tr>
+        <td>
+            <a>{{ wager.user.name }}</a>
+        </td>
+        <td>{{ wager.stake.name }}</td>
+        {% if session.get('user', {}).get('id') == wager.user.id %}
+            <td>
+                {% include "wager_editor.html" %}
+            </td>
+        {% else %}
+            <td>${{ wager.amount }}</td>
+        {% endif %}
+        <td class="{{wager.get_status_class()}}">{{ wager.get_outcome() }}</td>
+        <td>
+            <a href="{{ url_for('remove_wager', event_id=round.event.id, round_id=round.id, wager_id=wager.id) }}">Delete</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}
