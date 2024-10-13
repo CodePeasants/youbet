@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<h1>{{ round.name }}</h1>
+<h2>Competitors</h2>
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Odds</th>
+        <th>Won</th>
+        <th>Delete</th>
+    </tr>
+    {% for competitor in competitors %}
+    <tr>
+        <td>
+            <a>{{ competitor.user.name }}</a><br>
+        </td>
+        <td>
+            {% if user.id == event.creator.id %}
+            <form>
+                <input type="text" name="odds" value="{{ competitor.odds }}">
+                <button type="submit">Save</button>
+            </form>
+            {% else %}
+            <a>{{ competitor.odds }}</a>
+            {% endif %}
+        </td>
+        <td>
+            {% if user.id == event.creator.id %}
+            <form action="{{ url_for('competitor', id=competitor.id) }}" method="POST">
+                <input type="checkbox" name="won" {% if competitor.won %}checked{% endif %}>
+                <input type="submit" value="Submit">
+            </form>
+            {% else %}
+            <a>{% if competitor.won %}Yes{% else %}No{% endif %}</a>
+            {% endif %}
+        </td>
+        <td>
+            {% if user.id == event.creator.id %}
+            <a href="{{ url_for('delete_competitor', id=competitor.id) }}">Delete</a>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    {% if user.id == event.creator.id %}
+    <tr>
+        <form action="{{ url_for('add_competitor', round_id=round.id) }}" method="POST">
+            <td>
+                <select name="name">
+                    {% for user in round.event.users %}
+                    <option value="{{ user.id }}">{{ user.name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td>
+                <input type="text" name="odds" placeholder="Odds">
+            </td>
+            <td>
+                <input type="submit" value="Add">
+            </td>
+            <input type="submit" value="Add">
+        </form>
+    </tr>
+    {% endif %}
+</table>
+{% endblock %}

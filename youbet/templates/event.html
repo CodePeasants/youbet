@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<h1>{{ event.name }}</h1>
+<h2>Rounds</h2>
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Player 1</th>
+        <th>Player 2</th>
+        <th>Edit</th>
+        <th>Delete</th>
+    </tr>
+    {% for round in rounds %}
+    <tr>
+        <td>
+            <a href="{{ url_for('round', id=round.id) }}">{{ round.name }}</a><br>
+        </td>
+        <td>
+            <a>{{ round.competitors[0].user.name }} - {{ round.competitors[0].odds }}</a>
+        </td>
+        <td>
+            <a>{{ round.competitors[1].user.name }} - {{ round.competitors[1].odds }}</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h2>Players</h2>
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Money</th>
+        <th>Delete</th>
+    </tr>
+    {% for user, money in zip(users, current_money) %}
+    <tr>
+        <td>
+            <a >{{ user.name }}</a><br>
+        </td>
+        <td>
+            <a >{{ money }}</a>
+        </td>
+        {% if session.user.id == user.id or session.user.id == event.creator.id %}
+            <td>
+                <a href="{{ url_for('delete_event_user', event_id=event.id, user_id=user.id) }}">Remove</a>
+            </td>
+        {% else %}
+            <td></td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
