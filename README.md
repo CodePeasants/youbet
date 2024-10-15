@@ -11,7 +11,7 @@ You must define the following keys:
     - This can be generated via: ```python -c "import uuid;print(uuid.uuid4().hex)"```
 2. Initialize the database via:
 ```python create_db.py```
-3. Run the flask app (e.g. `flask --app app run`)
+3. Run the flask app (e.g. `flask --app youbet/app run`)
 
 ## Development
 While developing the app, make sure to run in debug mode:

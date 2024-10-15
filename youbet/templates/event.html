@@ -1,49 +1,87 @@
 {% extends 'base.html' %}
 
 {% block body %}
-<h1>{{ event.name }}</h1>
+<h1>
+    <a href="{{ url_for('main') }}">Events</a>
+    <a>></a>
+    <a>{{ event.name }}</a>
+</h1>
 <h2>Rounds</h2>
-<table>
+{% if session.get('user', {}).get('id') == event.creator.id %}
+    <a href="{{ url_for('add_round', event_id=event.id) }}">Create Round</a>
+{% endif %}
+<table class="table">
     <tr>
         <th>Name</th>
         <th>Player 1</th>
+        <th>Odds</th>
         <th>Player 2</th>
-        <th>Edit</th>
-        <th>Delete</th>
+        <th>Wager</th>
+        <th>Winner</th>
+        {% if session.get('user', {}).get('id') == event.creator.id %}
+            <th>Edit</th>
+            <th>Delete</th>
+        {% endif %}
     </tr>
-    {% for round in rounds %}
+    {% for round in event.rounds %}
     <tr>
         <td>
-            <a href="{{ url_for('round', id=round.id) }}">{{ round.name }}</a><br>
+            <a href="{{ url_for('round', event_id=event.id, id=round.id) }}">{{ round.name }}</a><br>
         </td>
         <td>
-            <a>{{ round.competitors[0].user.name }} - {{ round.competitors[0].odds }}</a>
+            <a>{{ round.competitor_a.name }}</a>
         </td>
+        <td>{{ round.odds }}</td>
         <td>
-            <a>{{ round.competitors[1].user.name }} - {{ round.competitors[1].odds }}</a>
+            <a>{{ round.competitor_b.name }}</a>
         </td>
+        {% if 'user' in session %}
+            {% if round.get_wager(session['user']['id']) %}
+                <td>{{ round.get_wager(session['user']['id']).get_outcome() }}</td>
+            {% else %}
+                <td>
+                    <form action="{{ url_for('add_wager', event_id=event.id, round_id=round.id) }}" method="GET">
+                        <input type="submit" value="Add Wager">
+                    </form>
+                </td>
+            {% endif %}
+        {% else %}
+            <td></td>
+        {% endif %}
+        <td>{{ round.winner }}</td>
+        {% if session.get('user', {}).get('id') == event.creator.id %}
+            <td>
+                <a href="{{ url_for('edit_round', event_id=event.id, round_id=round.id) }}">Edit</a>
+            </td>
+            <td>
+                <a href="{{ url_for('remove_round', event_id=event.id, round_id=round.id) }}">Delete</a>
+            </td>
+        {% endif %}
     </tr>
     {% endfor %}
 </table>
 
 <h2>Players</h2>
-<table>
+{% if session.get('user', {}).get('id') not in event.get_participant_ids() %}
+<a href="{{ url_for('add_event_user', event_id=event.id, user_id=session['user']['id']) }}">Join Event</a>
+{% endif %}
+<table class="table">
     <tr>
         <th>Name</th>
         <th>Money</th>
         <th>Delete</th>
     </tr>
-    {% for user, money in zip(users, current_money) %}
+    {% for user in event.get_participants() %}
     <tr>
         <td>
             <a >{{ user.name }}</a><br>
         </td>
         <td>
-            <a >{{ money }}</a>
+            <a >{{ event.get_current_money(user) }}</a>
         </td>
-        {% if session.user.id == user.id or session.user.id == event.creator.id %}
+        {% if session.get('user', {}).get('id') == user.id or session.get('user', {}).get('id') == event.creator.id %}
             <td>
-                <a href="{{ url_for('delete_event_user', event_id=event.id, user_id=user.id) }}">Remove</a>
+                <a href="{{ url_for('remove_event_user', event_id=event.id, user_id=user.id) }}">Remove</a>
             </td>
         {% else %}
             <td></td>

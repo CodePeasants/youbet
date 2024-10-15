@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<h1>
+    <a href="{{ url_for('main') }}">Events</a>
+    <a>></a>
+    <a href="{{ url_for('event', event_id=round.event.id) }}">{{ round.event.name }}</a>
+    <a>></a>
+    <a>{{ round.name }}</a>
+</h1>
+<form action="{{ url_for('edit_round', event_id=round.event.id, round_id=round.id) }}" method="POST">
+    <a>Round Name</a>
+    <input type="text" name="name" placeholder="Name" id="name" value="{{ round.name }}"><br>
+    <a>Player A</a>
+    <select name="player_a">
+        {% for user in round.event.participants %}
+            {% if user.id == round.competitor_a.id %}
+                <option value="{{ user.id }}">{{ user.name }} selected</option>
+            {% else %}
+                <option value="{{ user.id }}">{{ user.name }}</option>
+            {% endif %}
+        {% endfor %}
+    </select><br>
+    <a>Player B</a>
+    <select name="player_b">
+        {% for user in round.event.participants %}
+            {% if user.id == round.competitor_b.id %}
+                <option value="{{ user.id }}">{{ user.name }} selected</option>
+            {% else %}
+                <option value="{{ user.id }}">{{ user.name }}</option>
+            {% endif %}
+        {% endfor %}
+    </select><br>
+    <a>Odds (A:B)</a>
+    <input type="text" name="odds" placeholder="Odds (E.g. 2:1)" id="odds" value="{{ round.odds }}"><br>
+    <input type="submit" value="Sace Changes" id="submit">
+</form>
+{% endblock %}

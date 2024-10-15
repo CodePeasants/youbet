@@ -1,6 +1,8 @@
 import random
+import re
 import hashlib
 import secrets
+import uuid
 import binascii
 
 
@@ -48,31 +50,82 @@ def reset_password(user, db):
 #     return True
 
 
-def generate_password():
+def generate_password(length=5):
     """Generate a random password of 5 characters"""
     result = ""
     options = list(range(48, 58)) + list(range(65, 91)) + list(range(97, 123))
-    for i in range(5):
+    for i in range(length):
         result += chr(random.choice(options))
     return result
 
 
 def generate_salt():
     """Generate a random salt."""
-    return secrets.token_bytes(16)
+    return binascii.hexlify(secrets.token_bytes(16))
 
 
-def hash_password(password, salt=None):
+def hash_password(password, salt=None, as_str=False):
     """Hash a password for storing."""
     if salt is None:
         salt = generate_salt()
+    else:
+        salt = coerce_to_bytes(salt)
     pwdhash = hashlib.pbkdf2_hmac('sha512', password.encode('utf-8'), salt, 100000)
-    pwdhash = binascii.hexlify(pwdhash).decode('ascii')
+    pwdhash = binascii.hexlify(pwdhash)
+    if as_str:
+        pwdhash = coerce_to_str(pwdhash)
+        salt = coerce_to_str(salt)
     return pwdhash, salt
+
+
+def validate_password(password):
+    """Check if a password is valid."""
+    valid_range = set(range(48, 123))
+    if any([ord(x) not in valid_range for x in password]):
+        return False
+    return True
 
 
 def verify_password(stored_password, salt, provided_password):
     """Verify a stored password against one provided by user"""
-    pwdhash = hash_password(provided_password, salt)
-    pwdhash = binascii.hexlify(pwdhash).decode('ascii')
-    return pwdhash == stored_password
+    pwdhash, salt = hash_password(provided_password, str_to_bytes(salt))
+    return pwdhash == str_to_bytes(stored_password)
+
+
+def bytes_to_str(data):
+    try:
+        return data.decode('utf-8')
+    except UnicodeDecodeError as e:
+        raise Exception(f"Could not decode {data} of type: {type(data)} from bytes to str. Originall error: {e}")
+
+
+def str_to_bytes(data):
+    return data.encode('utf-8')
+
+
+def coerce_to_bytes(data):
+    if isinstance(data, str):
+        return str_to_bytes(data)
+    return data
+
+
+def coerce_to_str(data):
+    if isinstance(data, bytes):
+        return bytes_to_str(data)
+    return data
+
+
+def validate_odds(odds):
+    if not isinstance(odds, str):
+        return False
+    if not re.match(r"^\d+(\.\d+)?:\d+(\.\d+)?$", odds):
+        return False 
+    return True
+
+
+def solve_odds(odds, amount, reverse_odds=False):
+    tokens = odds.split(":")
+    if reverse_odds:
+        tokens.reverse()
+    ratio = float(tokens[0]) / float(tokens[1])
+    return amount * ratio
