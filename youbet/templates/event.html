@@ -26,7 +26,7 @@
     {% for round in event.rounds %}
     <tr>
         <td>
-            <a href="{{ url_for('round', event_id=event.id, id=round.id) }}">{{ round.name }}</a><br>
+            <a href="{{ url_for('round', event_id=event.id, round_id=round.id) }}">{{ round.name }}</a><br>
         </td>
         <td>
             <a>{{ round.competitor_a.name }}</a>
@@ -48,7 +48,7 @@
         {% else %}
             <td></td>
         {% endif %}
-        <td>{{ round.winner }}</td>
+        <td>{{ round.winner.name }}</td>
         {% if session.get('user', {}).get('id') == event.creator.id %}
             <td>
                 <a href="{{ url_for('edit_round', event_id=event.id, round_id=round.id) }}">Edit</a>

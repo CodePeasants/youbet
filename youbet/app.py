@@ -10,15 +10,13 @@ flask-sqlalchemy: https://flask-sqlalchemy.palletsprojects.com/en/3.0.x/quicksta
 bootstrap css: https://getbootstrap.com/docs/3.4/css/
 
 TODO
-- edit round page "selected" for option list not working as expected
-    - make a tool to initialize a DB with some users and participants in an event so I have more options to work with while testing.
-- Add option to set winner when editing round
-- Add option to close betting when editing a round
 - implement add_wager button from event page round table
     - add a selection for the player and an amount to wager along with the add wager button.
     - When betting closes, this becomes text displaying their wager.
-- implement round page that just shows the round data along with a table of wager that have been made.
-- Implementy edit event page
+    - Maybe add an option to view & edit your wager on the view round page as well?
+- Add option to close betting when editing a round
+- make a tool to initialize a DB with some users and participants in an event so I have more options to work with while testing.
+- Implement edit event page
 
 - right-align account buttons in navbar (some bootstrap class on the span?).
 - fix forgot password email sending, have to use google cloud API.
@@ -281,7 +279,7 @@ def add_event_user(event_id, user_id):
     return redirect(url_for('event', event_id=event_id))
 
 
-@app.route('/event/<event_id>/round/<id>', methods=['GET', 'POST'])
+@app.route('/event/<event_id>/round/<round_id>', methods=['GET', 'POST'])
 def round(event_id, round_id):
     round = Round.query.filter_by(id=round_id).first()
     if not round:
@@ -359,6 +357,8 @@ def edit_round(event_id, round_id):
         if not player_b:
             flash("Player B not found", "error")
             return redirect(url_for('edit_round', event_id=event_id, round_id=round_id))
+        
+        winner = User.query.filter_by(id=request.form['winner']).first()
 
         changed = False
         if name != round.name:
@@ -372,6 +372,9 @@ def edit_round(event_id, round_id):
             changed = True
         if player_b != round.competitor_b:
             round.competitor_b = player_b
+            changed = True
+        if winner != round.winner:
+            round.winner = winner
             changed = True
 
         if changed:

@@ -135,6 +135,11 @@ class Round(Base):
         for wager in self.wagers:
             if wager.user_id == user_id:
                 return wager
+    
+    def get_odds(self):
+        if self.odds:
+            return self.odds.split(":")
+        return ("", "")
 
 
 competitor_a = db.Table('competitor_a',
@@ -164,6 +169,11 @@ class Wager(Base):
     user = db.relationship('User')
     stake = db.relationship('User', secondary="wager_stake")
 
+    class Status:
+        UNDECIDED = "undecided"
+        WIN = "win"
+        LOSE = "lose"
+
     def __repr__(self):
         return '<Wager %r>' % self.id
     
@@ -172,9 +182,31 @@ class Wager(Base):
             return 0
 
         if self.round.winner == self.stake:
-            return self.amount + lib.solve_odds(self.round.odds, self.amount, reverse_odds=self.round.competitor_b == self.stake)
+            return lib.solve_odds(self.round.odds, self.amount, reverse_odds=self.round.competitor_b == self.stake)
         else:
             return -self.amount
+    
+    def get_status(self):
+        outcome = self.get_outcome()
+        if outcome == 0:
+            return self.Status.UNDECIDED
+        elif outcome > 0:
+            return self.Status.WIN
+        else:
+            return self.Status.LOSE
+
+    def get_status_class(self, status=None):
+        if status is None:
+            status = self.get_status()
+
+        if status == self.Status.UNDECIDED:
+            return "text-secondary"
+        elif status == self.Status.WIN:
+            return "text-success"
+        elif status == self.Status.LOSE:
+            return "text-danger"
+        else:
+            return "text-primary"
 
 
 wager_stake = db.Table('wager_stake',

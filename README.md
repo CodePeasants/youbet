@@ -15,4 +15,4 @@ You must define the following keys:
 
 ## Development
 While developing the app, make sure to run in debug mode:
-```flask --app app run --debug```
+```flask --app youbet/app run --debug```
