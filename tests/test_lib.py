@@ -1,5 +1,6 @@
 from youbet import lib
 import random
+import pytest
 
 
 def test_generate_password():
@@ -58,3 +59,36 @@ def test_all_password_characters():
     assert lib.validate_password(password)
     pwd, salt = lib.hash_password(password, as_str=True)
     assert lib.verify_password(pwd, salt, password)
+
+
+VALIDATE_ODDS_DATA = [
+    ("1:1", True),
+    ("2:1", True),
+    ("1:2", True),
+    ("1.5:1", True),
+    ("1.5:2.65312", True),
+    ("a", False),
+    ("a:1", False),
+    ("1:a", False),
+]
+
+@pytest.mark.parametrize(["odds", "expected_result"], VALIDATE_ODDS_DATA)
+def test_validate_odds(odds, expected_result):
+    assert lib.validate_odds(odds) is expected_result
+
+
+SOLVE_ODDS_DATA = [
+    (100, "1:1", 100, False),
+    (100, "2:1", 200, False),
+    (100, "4:2", 200, False),
+    (100, "1:2", 50, False),
+    (100, "1:1", 100, True),
+    (100, "2:1", 50, True),
+    (100, "4:2", 50, True),
+    (100, "1:2", 200, True),
+]
+
+@pytest.mark.parametrize(["amount", "odds", "expected_result", "reverse"], SOLVE_ODDS_DATA)
+def test_solve_odds(amount, odds, expected_result, reverse):
+    assert lib.solve_odds(odds=odds, amount=amount, reverse_odds=reverse) == expected_result
+    

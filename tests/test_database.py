@@ -1,5 +1,5 @@
 
-from youbet.database import User, Event, Round, Competitor, Wager
+from youbet.database import User, Event, Round, Wager
 from youbet import lib
 
 def test_db_create(db):
@@ -25,7 +25,6 @@ def test_event(db):
     round_trip == event
 
     assert event.creator == user
-    assert event in user.events_created
 
 
 def test_round(db):
@@ -42,26 +41,11 @@ def test_round(db):
     assert round in event.rounds
 
 
-def test_competitor(db):
-    user = User(name="test", email="test", password="test", salt=lib.generate_salt())
-    event = Event(name="test", starting_money=100, active=True, joinable=True, creator=user)
-    round = Round(name="test", event=event)
-    competitor = Competitor(odds=1.0, user=user, round=round)
-    db.session.add(competitor)
-    db.session.commit()
-
-    round_trip = db.session.get(Competitor, competitor.id)
-    round_trip == competitor
-
-    assert competitor.user == user
-    assert competitor.round == round
-
 def test_wager(db):
     user = User(name="test", email="test", password="test", salt=lib.generate_salt())
     event = Event(name="test", starting_money=100, active=True, joinable=True, creator=user)
     round = Round(name="test", event=event)
-    competitor = Competitor(odds=1.0, user=user, round=round)
-    wager = Wager(amount=1.0, user=user, competitor=competitor, round=round)
+    wager = Wager(amount=1.0, user=user, stake=user, round=round)
     db.session.add(wager)
     db.session.commit()
 
@@ -69,5 +53,5 @@ def test_wager(db):
     round_trip == wager
 
     assert wager.user == user
-    assert wager.competitor == competitor
+    assert wager.stake == user
     assert wager.round == round

@@ -1,63 +1,55 @@
 {% extends 'base.html' %}
 
 {% block body %}
-<h1>
-    <a href="{{ url_for('main') }}">Events</a>
-    <a>></a>
-    <a href="{{ url_for('event', event_id=round.event.id) }}">{{ round.event.name }}</a>
-    <a>></a>
-    <a>{{ round.name }}</a>
-</h1>
 <form action="{{ url_for('edit_round', event_id=round.event.id, round_id=round.id) }}" method="POST">
-    <a>Round Name</a>
-    <input type="text" name="name" placeholder="Name" id="name" value="{{ round.name }}"><br>
-    <a>Player A</a>
-    <select name="player_a">
-        {% for user in round.event.participants %}
-            {% if user.id == round.competitor_a.id %}
-                <option value="{{ user.id }}" selected="selected">{{ user.name }}</option>
-            {% else %}
-                <option value="{{ user.id }}">{{ user.name }}</option>
-            {% endif %}
-        {% endfor %}
-    </select><br>
-    <a>Player B</a>
-    <select name="player_b">
-        {% for user in round.event.participants %}
-            {% if user.id == round.competitor_b.id %}
-                <option value="{{ user.id }}" selected="selected">{{ user.name }}</option>
-            {% else %}
-                <option value="{{ user.id }}">{{ user.name }}</option>
-            {% endif %}
-        {% endfor %}
-    </select><br>
-    <a>Odds (A:B)</a>
-    <input type="text" name="odds" placeholder="Odds (E.g. 2:1)" id="odds" value="{{ round.odds }}"><br>
+    <input type="hidden" name="referrer" value="{{ request.referrer }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Name</label>
+        <input type="text" name="name" placeholder="Name" id="name" class="form-control" value="{{ round.name }}">
+    </div>
+
+    <div class="input-group mb-3">
+        <label for="player_a" class="input-group-text">Player A</label>
+        <select name="player_a" class="form-control" id="player_a">
+            <option value="" {% if not round.competitor_a %}selected="selected"{% endif %}>N/A</option>
+            {% for user in event.participants %}
+                <option value="{{ user.id }}" {% if round.competitor_a and round.competitor_a.id == user.id %}selected="selected"{% endif %}>{{ user.name }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="odds" class="input-group-text">Odds (A:B)</label>
+        <input type="text" name="odds" placeholder="odds (E.g. 2:1)" id="odds" class="form-control" value="{{ round.odds }}">
+
+        <label for="player_b" class="input-group-text">Player B</label>
+        <select name="player_b" class="form-control" id="player_b">
+            <option value="" {% if not round.competitor_b %}selected="selected"{% endif %}>N/A</option>
+            {% for user in event.participants %}
+                <option value="{{ user.id }}" {% if round.competitor_b and round.competitor_b.id == user.id %}selected="selected"{% endif %}>{{ user.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
     
-    <a>Winner</a>
-    <select name="winner">
-        <option value=""></option>
-        {% if round.competitor_a %}
-            {% if round.competitor_a == round.winner %}
-                <option value="{{ round.competitor_a.id }}" selected="selected">{{ round.competitor_a.name }}</option>
-            {% else %}
-                <option value="{{ round.competitor_a.id }}">{{ round.competitor_a.name }}</option>
-            {% endif%}
-        {% endif %}
-        {% if round.competitor_b %}
-            {% if round.competitor_b == round.winner %}
-                <option value="{{ round.competitor_b.id }}" selected="selected">{{ round.competitor_b.name }}</option>
-            {% else %}
-                <option value="{{ round.competitor_b.id }}">{{ round.competitor_b.name }}</option>
-                {% endif%}
-        {% endif %}
-    </select><br>
-    <a>Accept Wagers</a>
-    {% if round.accept_wagers %}
-        <input type="checkbox" name="accept_wagers" id="accept_wagers" checked><br>
-    {% else %}
-        <input type="checkbox" name="accept_wagers" id="accept_wagers" ><br>
-    {% endif %}
-    <input type="submit" value="Sace Changes" id="submit">
+    <div class="mb-3">
+        <label for="winner" class="form-label">Winner</label>
+        <select name="winner" class="form-control" id="winner">
+            <option value="" {% if not round.winner %}selected="selected"{% endif %}>N/A</option>
+            {% if round.competitor_a %}
+                <option value="{{ round.competitor_a.id }}" {% if round.winner and round.winner.id == round.competitor_a.id %}selected="selected"{% endif %}>{{ round.competitor_a.name }}</option>
+            {% endif %}
+            {% if round.competitor_b %}
+                <option value="{{ round.competitor_b.id }}" {% if round.winner and round.winner.id == round.competitor_b.id %}selected="selected"{% endif %}>{{ round.competitor_b.name }}</option>
+            {% endif %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="accept_wagers" class="form-label">Accept Wagers</label>
+        <input type="checkbox" name="accept_wagers" class="form-check-input" id="accept_wagers" {% if round.accept_wagers %}checked{% endif %}>
+    </div>
+
+    <div class="mb-3">
+        <button type="submit" value="Save Changes" id="submit" class="btn btn-primary">Save Changes</button>
+    </div>
 </form>
 {% endblock %}

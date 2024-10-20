@@ -20,8 +20,8 @@ class User(Base):
     password = db.Column(db.String(128), nullable=False)
     salt = db.Column(db.String(32), nullable=False)
     date_registered = db.Column(db.DateTime, nullable=False, default=now)
-    events_created = db.relationship('Event', back_populates='creator', uselist=True)
-    events_participated = db.relationship('Event', secondary='event_participant', back_populates='participants')
+    password_reset_code = db.Column(db.Integer, nullable=True, default=None)
+    password_reset_tries = db.Column(db.Integer, nullable=False, default=0)
 
     def __repr__(self):
         return '<User %r>' % self.id
@@ -43,9 +43,10 @@ class Event(Base):
     active = db.Column(db.Boolean, nullable=False, default=True)
     joinable = db.Column(db.Boolean, nullable=False, default=True)
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    creator = db.relationship('User', back_populates='events_created')
-    participants = db.relationship('User', secondary='event_participant', back_populates='events_participated')
-    winner = db.relationship('User', secondary="event_winner")
+    creator = db.relationship('User', foreign_keys=[creator_id])
+    participants = db.relationship('User', secondary='event_participant')
+    winner_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    winner = db.relationship('User', foreign_keys=[winner_id])
     rounds = db.relationship('Round', uselist=True, back_populates='event')
 
     class Status:
@@ -89,6 +90,8 @@ class Event(Base):
         delta = 0
         for round in self.rounds:
             for wager in round.wagers:
+                if wager.user != user:
+                    continue
                 delta += wager.get_outcome()
         return self.starting_money + delta
 
@@ -100,7 +103,6 @@ class Event(Base):
         
         current_money = self.get_current_money(user)
         outstanding = 0
-        # wagers = Wager.query.filter_by(user=user, event=self).all()
         wagers = db.session.query(Wager).join(Round).join(Event).filter(
             Wager.user == user,
             Event.id == self.id
@@ -120,13 +122,32 @@ class Event(Base):
             return []
         return sorted(self.participants, key=self.get_current_money)
     
+    def get_rounds(self):
+        return sorted(self.rounds, key=lambda x: (x.accepting_wagers(), x.date_created), reverse=True)
+    
+    def get_user_record(self, user, versus=None):
+        if versus is not None:
+            rounds = db.session.query(Round).filter(
+                ((Round.competitor_a == user) | (Round.competitor_b == user)) &
+                ((Round.competitor_a == versus) | (Round.competitor_b == versus))
+            ).all()
+        else:
+            rounds = db.session.query(Round).filter(
+                (Round.competitor_a == user) | (Round.competitor_b == user)
+            ).all()
+        
+        wins = 0
+        losses = 0
+        for round in rounds:
+            if round.winner:
+                if round.winner == user:
+                    wins += 1
+                else:
+                    losses += 1
+        return wins, losses
+    
 
 event_participant = db.Table('event_participant',
-    db.Column('event_id', db.Integer, db.ForeignKey('event.id')),
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id'))
-)
-
-event_winner = db.Table('event_winner',
     db.Column('event_id', db.Integer, db.ForeignKey('event.id')),
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'))
 )
@@ -141,9 +162,12 @@ class Round(Base):
     odds = db.Column(db.String(30), default="1:1")
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'))
     event = db.relationship('Event', back_populates='rounds')
-    winner = db.relationship('User', secondary="round_winner", uselist=False)
-    competitor_a = db.relationship('User', secondary="competitor_a", uselist=False)
-    competitor_b = db.relationship('User', secondary="competitor_b", uselist=False)
+    winner_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    winner = db.relationship('User', foreign_keys=[winner_id])
+    competitor_a_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    competitor_a = db.relationship('User', foreign_keys=[competitor_a_id])
+    competitor_b_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    competitor_b = db.relationship('User', foreign_keys=[competitor_b_id])
     wagers = db.relationship('Wager', uselist=True, back_populates='round')
 
     def __repr__(self):
@@ -167,22 +191,6 @@ class Round(Base):
         if not self.accept_wagers or self.winner:
             return False
         return True
-
-
-competitor_a = db.Table('competitor_a',
-    db.Column('round_id', db.Integer, db.ForeignKey('round.id')),
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id'))
-)
-
-competitor_b = db.Table('competitor_b',
-    db.Column('round_id', db.Integer, db.ForeignKey('round.id')),
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id'))
-)
-
-round_winner = db.Table('round_winner',
-    db.Column('round_id', db.Integer, db.ForeignKey('round.id')),
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id'))
-)
 
 
 class Wager(Base):
@@ -235,3 +243,11 @@ class Wager(Base):
             return "text-danger"
         else:
             return "text-primary"
+    
+    @classmethod
+    def get_update_wager_route(cls, user, round):
+        existing_wager = cls.query.filter_by(round=round, user=user).first()
+        if existing_wager:
+            return "add_wager"
+        else:
+            return "edit_wager"

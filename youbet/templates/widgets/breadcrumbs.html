@@ -1,0 +1,27 @@
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('main') }}">Events</a>
+        </li>
+        {% if event %}
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('event', event_id=event.id) }}">{{ event.name }}</a>
+                {% if session_user.id == event.creator.id %}
+                    <a class="icon-link ps-2" href="{{ url_for('edit_event', event_id=event.id) }}">
+                        <i class="bi bi-pencil-fill"></i>
+                    </a>
+                {% endif %}
+            </li>
+            {% if round %}
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('round', event_id=event.id, round_id=round.id) }}">{{ round.name }}</a>
+                    {% if session_user.id == event.creator.id %}
+                        <a class="icon-link ps-2" href="{{ url_for('edit_round', event_id=event.id, round_id=round.id) }}">
+                            <i class="bi bi-pencil-fill"></i>
+                        </a>
+                    {% endif %}
+                </li>
+            {% endif %}
+        {% endif %}
+    </ol>
+</nav>

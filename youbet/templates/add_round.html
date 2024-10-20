@@ -1,24 +1,37 @@
 {% extends 'base.html' %}
 
 {% block body %}
-<h1>Create Round</h1>
 <form action="{{ url_for('add_round', event_id=event.id) }}" method="POST">
-    <a>Round Name</a>
-    <input type="text" name="name" placeholder="Name" id="name"><br>
-    <a>Player A</a>
-    <select name="player_a">
-        {% for user in event.participants %}
-            <option value="{{ user.id }}">{{ user.name }}</option>
-        {% endfor %}
-    </select><br>
-    <a>Player B</a>
-    <select name="player_b">
-        {% for user in event.participants %}
-            <option value="{{ user.id }}">{{ user.name }}</option>
-        {% endfor %}
-    </select><br>
-    <a>Odds (A:B)</a>
-    <input type="text" name="odds" placeholder="Odds (E.g. 2:1)" id="odds"><br>
-    <input type="submit" value="Create Round" id="submit">
+    <input type="hidden" name="referrer" value="{{ request.referrer }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Name</label>
+        <input type="text" name="name" placeholder="Name" id="name" class="form-control">
+    </div>
+
+    <div class="input-group mb-3">
+        <label for="player_a" class="input-group-text">Player A</label>
+        <select name="player_a" class="form-control" id="player_a">
+            <option value="" selected="selected">N/A</option>
+            {% for user in event.participants %}
+                <option value="{{ user.id }}">{{ user.name }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="odds" class="input-group-text">Odds (A:B)</label>
+        <input type="text" name="odds" placeholder="odds (E.g. 2:1)" id="odds" class="form-control">
+
+        <label for="player_b" class="input-group-text">Player B</label>
+        <select name="player_b" class="form-control" id="player_b">
+            <option value="" selected="selected">N/A</option>
+            {% for user in event.participants %}
+                <option value="{{ user.id }}">{{ user.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="mb-3">
+        <button type="submit" value="Save Changes" id="submit" class="btn btn-primary">Save Changes</button>
+    </div>
 </form>
 {% endblock %}

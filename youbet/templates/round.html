@@ -1,55 +1,76 @@
 {% extends 'base.html' %}
 
 {% block body %}
-<h1>
-    <a href="{{ url_for('main') }}">Events</a>
-    <a>></a>
-    <a href="{{ url_for('event', event_id=round.event.id) }}">{{ round.event.name }}</a>
-    <a>></a>
-    <a>{{ round.name }}</a>
-</h1>
-<h1>
-{% if round.winner %}
-    {% if round.winner == round.competitor_a %}
-        <a class="text-success">{{ round.competitor_a.name }} (W)</a><a class="text-secondary">[{{round.get_odds()[0]}}]</a><a> VS </a><a class="text-secondary">[{{round.get_odds()[1]}}]</a><a class="text-danger">{{ round.competitor_b.name }} (L)</a><br>
-    {% else %}
-        <a class="text-danger">{{ round.competitor_a.name }} (L)</a><a> VS </a><a class="text-success">{{ round.competitor_b.name }} (W)</a><br>
-    {% endif %}
-{% else %}
-    <a>{{ round.competitor_a.name }}</a><a> VS </a><a>{{ round.competitor_b.name }}</a><br>
-{% endif %}
-</h1>
+<div class="container-fluid">
+    <div class="row" style="align-items: center;">
+        <div class="col-sm-5 col-xs-12" style="align-items: center;">
+            <div class="d-flex justify-content-center">
+                <div class="card" style="width: 18rem; text-align: center; {% if round.winner == round.competitor_a %}border-color: green;{% elif round.winner == round.competitor_b %}border-color: red;{% endif %} ">
+                    <div class="card-body">
+                        <h5 class="card-title">{{round.competitor_a.name}}</h5>
+                        {% with wins, losses = event.get_user_record(round.competitor_a) %}
+                            <h6 class="card-subtitle mb-2 text-muted">Overall record: {{ wins }}W - {{ losses }}L</h6>
+                        {% endwith %}
+                        {% with wins, losses = event.get_user_record(round.competitor_a, round.competitor_b) %}
+                            <h6 class="card-subtitle mb-2 text-muted">Record vs {{ round.competitor_b.name }}: {{ wins }}W - {{ losses }}L</h6>
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+        </div>
 
-{% if session.get('user', {}).get('id') == round.event.creator.id %}
-    <a href="{{ url_for('edit_round', event_id=round.event.id, round_id=round.id) }}">Edit Round</a>
-{% endif %}
+        <div class="col-md-2 col-sm-1 col-xs-12">
+            <div class="d-flex justify-content-center">
+                <div class="column">
+                    <div class="row">
+                        <h1 class="h-1" style="text-align: center;">VS</h1>
+                    </div>
+                    <div class="row">
+                        <h3 class="text-muted" style="text-align: center;">{{round.odds}}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-5 col-xs-12" style="align-items: center;">
+            <div class="d-flex justify-content-center">
+                <div class="card" style="width: 18rem; text-align: center; {% if round.winner == round.competitor_b %}border-color: green;{% elif round.winner == round.competitor_a %}border-color: red;{% endif %} ">
+                    <div class="card-body">
+                        <h5 class="card-title">{{round.competitor_b.name}}</h5>
+                        {% with wins, losses = event.get_user_record(round.competitor_b) %}
+                            <h6 class="card-subtitle mb-2 text-muted">Overall record: {{ wins }}W - {{ losses }}L</h6>
+                        {% endwith %}
+                        {% with wins, losses = event.get_user_record(round.competitor_b, round.competitor_a) %}
+                            <h6 class="card-subtitle mb-2 text-muted">Record vs {{ round.competitor_a.name }}: {{ wins }}W - {{ losses }}L</h6>
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
 
 <h2>Wagers</h2>
 <table class="table">
     <tr>
         <th>Player</th>
-        <th>Stake</th>
         <th>Wager</th>
         <th>Outcome</th>
-        <th>Delete</th>
     </tr>
     {% for wager in round.wagers %}
     <tr>
         <td>
             <a>{{ wager.user.name }}</a>
         </td>
-        <td>{{ wager.stake.name }}</td>
         {% if session.get('user', {}).get('id') == wager.user.id %}
             <td>
-                {% include "wager_editor.html" %}
+                {% include "widgets/wager_editor.html" %}
             </td>
         {% else %}
-            <td>${{ wager.amount }}</td>
+            <td>{{wager.stake.name}}: ${{ wager.amount }}</td>
         {% endif %}
         <td class="{{wager.get_status_class()}}">{{ wager.get_outcome() }}</td>
-        <td>
-            <a href="{{ url_for('remove_wager', event_id=round.event.id, round_id=round.id, wager_id=wager.id) }}">Delete</a>
-        </td>
     </tr>
     {% endfor %}
 </table>

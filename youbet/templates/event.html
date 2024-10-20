@@ -1,15 +1,19 @@
 {% extends 'base.html' %}
 
 {% block body %}
-<h1>
-    <a href="{{ url_for('main') }}">Events</a>
-    <a>></a>
-    <a>{{ event.name }}</a>
-</h1>
-<h2>Rounds</h2>
-{% if session_user.id == event.creator.id %}
-    <a href="{{ url_for('add_round', event_id=event.id) }}">Create Round</a>
+{% if event.winner %}
+<h1>Winner: {{ event.winner.name }}</h1>
 {% endif %}
+
+<h2>
+    <a>Rounds</a>
+    {% if event.get_status() in [event.Status.OPEN, event.Status.ACTIVE] %}
+        {% if session_user.id == event.creator.id %}
+            <a href="{{ url_for('add_round', event_id=event.id) }}" class="btn btn-primary">Create Round</a>
+        {% endif %}
+    {% endif %}
+</h2>
+
 <table class="table">
     <tr>
         <th>Name</th>
@@ -18,15 +22,19 @@
         <th>Player 2</th>
         <th>Wager</th>
         <th>Winner</th>
-        {% if session_user.id == event.creator.id %}
-            <th>Edit</th>
-            <th>Delete</th>
-        {% endif %}
     </tr>
-    {% for round in event.rounds %}
+    {% for round in event.get_rounds() %}
     <tr>
         <td>
-            <a href="{{ url_for('round', event_id=event.id, round_id=round.id) }}">{{ round.name }}</a><br>
+            <a href="{{ url_for('round', event_id=event.id, round_id=round.id) }}">{{ round.name }}</a>
+            {% if session_user.id == event.creator.id %}
+                <a class="icon-link ps-3" href="{{ url_for('edit_round', event_id=event.id, round_id=round.id) }}">
+                    <i class="bi bi-pencil-fill"></i>
+                </a>
+                <a class="icon-link ps-3" href="{{ url_for('remove_round', event_id=event.id, round_id=round.id) }}">
+                    <i class="bi bi-trash"></i>
+                </a>
+            {% endif %}
         </td>
         <td>
             <a>{{ round.competitor_a.name }}</a>
@@ -37,31 +45,34 @@
         </td>
         <td>
             {% with wager=round_wagers.get(round.id) %}
-                {% include "wager_editor.html" %}
+                {% include "widgets/wager_editor.html" %}
             {% endwith %}
         </td>
         <td>{{ round.winner.name }}</td>
-        {% if session_user.id == event.creator.id %}
-            <td>
-                <a href="{{ url_for('edit_round', event_id=event.id, round_id=round.id) }}">Edit</a>
-            </td>
-            <td>
-                <a href="{{ url_for('remove_round', event_id=event.id, round_id=round.id) }}">Delete</a>
-            </td>
-        {% endif %}
     </tr>
     {% endfor %}
 </table>
 
-<h2>Players</h2>
-{% if session_user.id not in event.get_participant_ids() %}
-<a href="{{ url_for('add_event_user', event_id=event.id, user_id=session['user']['id']) }}">Join Event</a>
-{% endif %}
+<h2>
+    <a>Players</a>
+    {% if event.get_status() in [event.Status.OPEN, event.Status.ACTIVE] %}
+        {% if session_user.id not in event.get_participant_ids() %}
+            <a class="btn btn-primary" href="{{ url_for('add_event_user', event_id=event.id, user_id=session['user']['id']) }}">Join Event</a>
+        {% else %}
+            {% if event.get_status() != event.Status.ACTIVE %}
+                <a class="btn btn-warning" href="{{ url_for('remove_event_user', event_id=event.id, user_id=session['user']['id']) }}">Leave Event</a>
+            {% endif %}
+        {% endif %}
+    {% endif %}
+</h2>
+
 <table class="table">
     <tr>
         <th>Name</th>
         <th>Money</th>
-        <th>Delete</th>
+        {% if session_user.id == event.creator.id %}
+            <th>Kick</th>
+        {% endif %}
     </tr>
     {% for user in event.get_participants() %}
     <tr>
@@ -71,7 +82,7 @@
         <td>
             <a >{{ event.get_current_money(user) }}</a>
         </td>
-        {% if session_user.id == user.id or session_user.id == event.creator.id %}
+        {% if session_user.id == event.creator.id %}
             <td>
                 <a href="{{ url_for('remove_event_user', event_id=event.id, user_id=user.id) }}">Remove</a>
             </td>

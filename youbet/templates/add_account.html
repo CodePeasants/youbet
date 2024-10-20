@@ -3,9 +3,23 @@
 {% block body %}
 <h1>Create Account</h1>
 <form action="{{ url_for('add_account') }}" method="POST">
-    <input type="text" name="name" placeholder="Name" id="name"><br>
-    <input type="email" name="email" placeholder="Email" id="email"><br>
-    <input type="password" name="password" placeholder="Password" id="password"><br>
-    <input type="submit" value="Create Account" id="submit">
+    <div class="mb-3">
+        <label for="name" class="form-label">Name</label>
+        <input type="text" name="name" placeholder="Name" id="name" class="form-control">
+    </div>
+
+    <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" name="email" placeholder="john.doe@email.com" id="email" class="form-control">
+    </div>
+
+    <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" name="password" placeholder="Password" id="password" class="form-control">
+    </div>
+
+    <div class="mb-3">
+        <button type="submit" value="Save Changes" id="submit" class="btn btn-primary">Create Account</button>
+    </div>
 </form>
 {% endblock %}

@@ -7,22 +7,10 @@ https://realpython.com/python-send-email/#including-html-content
 
 Docs:
 flask-sqlalchemy: https://flask-sqlalchemy.palletsprojects.com/en/3.0.x/quickstart/
-bootstrap css: https://getbootstrap.com/docs/3.4/css/
-
-TODO
-- implement add_wager section of event.html rounds table
-    - add a selection for the player and an amount to wager along with the add wager button.
-    - When betting closes, this becomes text displaying their wager.
-    - Maybe add an option to view & edit your wager on the view round page as well?
-- Add option to close betting when editing a round
-- make a tool to initialize a DB with some users and participants in an event so I have more options to work with while testing.
-- Implement edit event page
-
-- right-align account buttons in navbar (some bootstrap class on the span?).
-- fix forgot password email sending, have to use google cloud API.
+bootstrap: https://getbootstrap.com/docs/5.0/forms/overview/
+bootstrap icons: https://icons.getbootstrap.com/
 """
 import os
-import ast
 from flask import Flask, render_template, session, url_for, redirect, request, flash
 from youbet import lib
 from youbet.database import db, User, Event, Round, Wager
@@ -46,12 +34,17 @@ def main():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    i_email = request.args.get("i_email")
     if request.method == 'POST':
         email = request.form['email']
-        password = request.form['password']
-        if not email or not password:
-            flash("Please enter an email and password", "error")
+        if not email:
+            flash("Please enter an email", "warning")
             return redirect(url_for('login'))
+        
+        password = request.form['password']
+        if not password:
+            flash("Please enter a password", "warning")
+            return redirect(url_for('login', i_email=email))
         
         user = User.query.filter_by(email=email).first()
         if not user:
@@ -59,12 +52,13 @@ def login():
             return redirect(url_for('login'))
         
         if not lib.verify_password(user.password, user.salt, password):
-            flash("Incorrect password", "error")
-            return redirect(url_for('login'))
+            flash("Incorrect password", "warning")
+            return redirect(url_for('login', i_email=email))
+        
         session["user"] = user.to_json()
         return redirect(url_for('main'))
     else:
-        return render_template('login.html')
+        return render_template('login.html', i_email=i_email)
 
 
 @app.route('/logout', methods=['GET', 'POST'])
@@ -99,7 +93,7 @@ def add_account():
             db.session.add(new_user)
             db.session.commit()
             session["user"] = new_user.to_json()
-            return redirect(url_for('main'))
+            return redirect(url_for("main"))
         except Exception as e:
             flash("Something went wrong", "error")
             redirect(url_for('add_account'))
@@ -110,17 +104,59 @@ def add_account():
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
+    i_email = request.args.get("i_email")
+    i_code = request.args.get("i_code")
+
     if request.method == 'POST':
         email = request.form['email']
-        user = User.query.filter_by(email=email).first()
-        if not user:
-            flash("No account with that email exists", "error")
+        if not email:
+            flash(f"You must enter an email", "error")
             return redirect(url_for('forgot_password'))
         
-        lib.reset_password(user, db)
-        return redirect(url_for('login'))
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            flash(f"No account with that email: {email} exists", "error")
+            return redirect(url_for('forgot_password'))
+
+        if request.form['submit_button'] == "send_code":
+            max_reset_tries = app.config.get("RESET_PASSWORD_MAX_TRIES")
+            if max_reset_tries and user.password_reset_tries >= max_reset_tries:
+                flash(f"You have exceeded the maximum number of verification code sends ({max_reset_tries}) before changing your password.", "error")
+                return redirect(url_for('forgot_password', i_email=email))
+
+            success = lib.reset_password(user, db)
+            if not success:
+                flash("Something went wrong.", "error")
+                return redirect(url_for('forgot_password'))
+            
+            flash("Verification code sent.", "info")
+            return redirect(url_for('forgot_password', i_email=email))
+        
+        verification_code = request.form["code"]
+        if int(verification_code) != user.password_reset_code:
+            flash("Invalid verification code", "warning")
+            return redirect(url_for('forgot_password', i_email=email, i_code=verification_code))
+
+        new_password = request.form['new_password']
+        if not new_password or not lib.validate_password(new_password):
+            flash("Please enter a valid password", "error")
+            return redirect(url_for('forgot_password', i_email=email, i_code=verification_code))
+        
+        encrypted_password, salt = lib.hash_password(new_password, as_str=True)
+        
+        try:
+            user.password = encrypted_password
+            user.salt = salt
+            user.password_reset_code = None
+            user.password_reset_tries = 0
+            db.session.commit()
+            return redirect(url_for("login"))
+        except Exception as e:
+            flash("Something went wrong", "error")
+            print(e)
+            return redirect(url_for('forgot_password', i_email=email, i_code=verification_code))
     else:
-        return render_template('forgot_password.html')
+        return render_template('forgot_password.html', i_email=i_email, i_code=i_code)
 
 
 @app.route('/account', methods=['GET', 'POST'])
@@ -163,7 +199,7 @@ def account():
                 flash("Changes saved", "info")
         else:
             flash("No changes made", "info")
-        return redirect(url_for('account'))
+        return redirect(lib.get_redirect_url())
     else:
         return render_template('account.html', user=session_user)
 
@@ -172,7 +208,7 @@ def event(event_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
         flash("Event not found", "error")
-        return redirect(url_for('main'))
+        return redirect(lib.get_redirect_url())
     
     session_user_id = session.get("user", {}).get("id")
     session_user = User.query.filter_by(id=session_user_id).first()
@@ -200,6 +236,13 @@ def add_event():
             flash("Session user not found in database!", "error")
             return redirect(url_for('login'))
         
+        max_events = app.config.get("MAX_EVENTS_PER_USER")
+        if max_events:
+            user_events = Event.query.filter_by(creator=user).all()
+            if len(user_events) >= max_events:
+                flash(f"You have already created the maximum number of allowed events ({max_events})! Delete an event to make a new one.", "error")
+                return redirect(url_for('add_event'))
+        
         name = request.form['name']
         if not name:
             flash("Please enter a valid name", "error")
@@ -214,7 +257,7 @@ def add_event():
         try:
             db.session.add(new_event)
             db.session.commit()
-            return redirect(url_for('main'))
+            return redirect(lib.get_redirect_url())
         except Exception as e:
             flash("Something went wrong", "error")
     else:
@@ -225,18 +268,59 @@ def edit_event(event_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
         flash("Event not found", "error")
-        return redirect(url_for('main'))
+        return redirect(lib.get_redirect_url())
     
-    # TODO
-    # return render_template('edit_event.html', event=event)
-    return "hello world"
+    if request.method == "POST":
+        name = request.form["name"]
+        if not name:
+            flash("Please enter a valid name", "warning")
+            return redirect(url_for('edit_event', event_id=event.id))
+        
+        starting_money = request.form["starting_money"]
+        if not starting_money or float(starting_money) <= 0:
+            flash("Please enter a valid starting money", "warning")
+            return redirect(url_for('edit_event', event_id=event.id))
+        
+        joinable = lib.coerce_str_to_bool(request.form.get("joinable"))
+        winner = User.query.filter_by(id=request.form["winner"]).first()
+
+        change_made = False
+        if name != event.name:
+            event.name = name
+            change_made = True
+        
+        if starting_money != event.starting_money:
+            event.starting_money = starting_money
+            change_made = True
+        
+        if joinable != event.joinable:
+            event.joinable = joinable
+            change_made = True
+        
+        if winner != event.winner:
+            event.winner = winner
+            change_made = True
+        
+        if change_made:
+            try:
+                db.session.commit()
+            except Exception as e:
+                print(e)
+                flash("Something went wrong", "error")
+        else:
+            flash("No changes made", "info")
+        return redirect(lib.get_redirect_url())
+    else:
+        session_user = User.query.filter_by(id=session.get("user", {}).get('id')).first()
+        return render_template('edit_event.html', event=event, session_user=session_user)
+
 
 @app.route('/event/<event_id>/remove', methods=['GET', 'POST'])
 def remove_event(event_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
         flash("Event not found", "warning")
-        return redirect(url_for('main'))
+        return redirect(lib.get_redirect_url())
     
     try:
         db.session.delete(event)
@@ -244,19 +328,20 @@ def remove_event(event_id):
     except Exception as e:
         print(e)
         flash("Something went wrong", "error")
-    return redirect(url_for('main'))
+    return redirect(url_for("main"))
+
 
 @app.route('/event/<event_id>/remove_user/<user_id>', methods=['GET','POST'])
 def remove_event_user(event_id, user_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
         flash("Event not found", "error")
-        return redirect(url_for('main'))
+        return redirect(lib.get_redirect_url())
     
     user = User.query.filter_by(id=user_id).first()
     if not user:
         flash("User not found", "error")
-        return redirect(url_for('event', event_id=event_id))
+        return redirect(lib.get_redirect_url())
     
     try:
         event.participants.remove(user)
@@ -264,8 +349,7 @@ def remove_event_user(event_id, user_id):
     except Exception as e:
         print(e)
         flash("Something went wrong", "error")
-        return redirect(url_for('event', event_id=event_id))
-    return redirect(url_for('event', event_id=event_id))
+    return redirect(lib.get_redirect_url())
 
 
 @app.route('/event/<event_id>/add_user/<user_id>', methods=['GET', 'POST'])
@@ -273,12 +357,12 @@ def add_event_user(event_id, user_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
         flash("Event not found", "error")
-        return redirect(url_for('main'))
+        return redirect(lib.get_redirect_url())
     
     user = User.query.filter_by(id=user_id).first()
     if not user:
         flash("User not found", "error")
-        return redirect(url_for('event', event_id=event_id))
+        return redirect(lib.get_redirect_url())
     
     try:
         event.participants.append(user)
@@ -286,8 +370,7 @@ def add_event_user(event_id, user_id):
     except Exception as e:
         print(e)
         flash("Something went wrong", "error")
-        return redirect(url_for('event', event_id=event_id))
-    return redirect(url_for('event', event_id=event_id))
+    return redirect(lib.get_redirect_url())
 
 
 @app.route('/event/<event_id>/round/<round_id>', methods=['GET', 'POST'])
@@ -295,11 +378,11 @@ def round(event_id, round_id):
     round = Round.query.filter_by(id=round_id).first()
     if not round:
         flash("Round not found", "error")
-        return redirect(url_for('event', event_id=event_id))
+        return redirect(lib.get_redirect_url())
     
     session_user = User.query.filter_by(id=session.get("user", {}).get('id')).first()
     
-    return render_template('round.html', round=round, session_user=session_user)
+    return render_template('round.html', event=round.event, round=round, session_user=session_user)
 
 
 @app.route("/event/<event_id>/add_round", methods=['GET', 'POST'])
@@ -307,30 +390,36 @@ def add_round(event_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
         flash("Event not found", "error")
-        return redirect(url_for('main'))
-
+        return redirect(lib.get_redirect_url())
+    
     if request.method == 'POST':
+        max_rounds = app.config.get("MAX_ROUNDS_PER_EVENT")
+        if max_rounds:
+            if len(event.rounds) >= max_rounds:
+                flash(f"You have already created the maximum number of allowed rounds ({max_rounds})!.", "error")
+                return redirect(url_for('add_round', event_id=event.id))
+
         name = request.form['name']
         if not name:
             flash("Please enter a valid name", "warning")
-            return redirect(url_for('add_round', event_id=event_id))
+            return redirect(url_for("add_round", event_id=event.id))
         
         odds = request.form['odds']
         if odds and not lib.validate_odds(odds):
             flash("Please enter a valid odds", "warning")
-            return redirect(url_for('add_round', event_id=event_id))
+            return redirect(url_for("add_round", event_id=event.id))
         if not odds:
             odds = "1:1"
         
         player_a = User.query.filter_by(id=request.form['player_a']).first()
         if not player_a:
             flash("Player A not found", "error")
-            return redirect(url_for('add_round', event_id=event_id))
+            return redirect(url_for("add_round", event_id=event.id))
         
         player_b = User.query.filter_by(id=request.form['player_b']).first()
         if not player_b:
             flash("Player B not found", "error")
-            return redirect(url_for('add_round', event_id=event_id))
+            return redirect(url_for("add_round", event_id=event.id))
 
         new_round = Round(name=name, event=event, odds=odds, competitor_a=player_a, competitor_b=player_b)
         try:
@@ -340,9 +429,10 @@ def add_round(event_id):
         except Exception as e:
             print(e)
             flash("Something went wrong", "error")
-            return redirect(url_for('add_round', event_id=event_id))
+            return redirect(lib.get_redirect_url())
     else:
-        return render_template('add_round.html', event=event)
+        session_user = User.query.filter_by(id=session.get("user", {}).get('id')).first()
+        return render_template('add_round.html', event=event, session_user=session_user)
 
 
 @app.route('/event/<event_id>/round/<round_id>/edit', methods=['GET', 'POST'])
@@ -403,16 +493,17 @@ def edit_round(event_id, round_id):
                 print(e)
                 flash("Something went wrong", "error")
                 return redirect(url_for('edit_round', event_id=event_id, round_id=round_id))
-        return redirect(url_for('round', event_id=event_id, round_id=round_id))
+        return redirect(lib.get_redirect_url())
     else:
-        return render_template('edit_round.html', round=round)
+        session_user = User.query.filter_by(id=session.get("user", {}).get('id')).first()
+        return render_template('edit_round.html', event=round.event, round=round, session_user=session_user)
 
 @app.route('/event/<event_id>/round/<round_id>/remove', methods=['GET', 'POST'])
 def remove_round(event_id, round_id):
     round = Round.query.filter_by(id=round_id).first()
     if not round:
         flash("Round not found", "warning")
-        return redirect(url_for('event', event_id=event_id))
+        return redirect(lib.get_redirect_url())
     
     try:
         db.session.delete(round)
@@ -420,7 +511,7 @@ def remove_round(event_id, round_id):
     except Exception as e:
         print(e)
         flash("Something went wrong", "error")
-    return redirect(url_for('event', event_id=event_id))
+    return redirect(lib.get_redirect_url())
 
 
 @app.route('/event/<event_id>/round/<round_id>/add_wager', methods=['GET', 'POST'])
@@ -428,22 +519,22 @@ def add_wager(event_id, round_id):
     round = Round.query.filter_by(id=round_id).one()
     if not round:
         flash("Round not found", "error")
-        return redirect(url_for('event', event_id=event_id))
+        return redirect(lib.get_redirect_url())
     
     user_id = session.get("user", {}).get("id")
     if not user_id:
         flash("Not logged in!", "error")
-        return redirect(url_for('event', event_id=event_id))
+        return redirect(lib.get_redirect_url())
 
     user = User.query.filter_by(id=user_id).one()
     if not user:
         flash(f"User ID: {user_id} not found!", "error")
-        return redirect(url_for('event', event_id=event_id))
+        return redirect(lib.get_redirect_url())
     
     stake = User.query.filter_by(id=request.form["stake"]).one()
     if not stake:
         flash(f"User ID: {stake} not found!", "error")
-        return redirect(url_for('event', event_id=event_id))
+        return redirect(lib.get_redirect_url())
     
     amount = request.form["amount"]
     # If they submit a bid of 0, remove their wager.
@@ -451,7 +542,7 @@ def add_wager(event_id, round_id):
         existing_wager = Wager.query.filter_by(user=user, round=round).first()
         if not existing_wager:
             flash("No wager set.", "info")
-            return redirect(url_for('event', event_id=event_id))
+            return redirect(lib.get_redirect_url())
         return redirect(url_for('remove_wager', event_id=round.event.id, round_id=round.id, wager_id=existing_wager.id))
     else:
         amount = float(amount)
@@ -464,14 +555,61 @@ def add_wager(event_id, round_id):
         print(e)
         flash("Something went wrong", "error")
     
-    return redirect(url_for('event', event_id=event_id))
+    return redirect(lib.get_redirect_url())
+
+@app.route('/event/<event_id>/round/<round_id>/edit_wager', methods=['GET', 'POST'])
+def edit_wager(event_id, round_id):
+    round = Round.query.filter_by(id=round_id).one()
+    if not round:
+        flash("Round not found", "error")
+        return redirect(lib.get_redirect_url())
+    
+    session_user = User.query.filter_by(id=session.get("user", {}).get('id')).first()
+    if not session_user:
+        flash("Not logged in!", "error")
+        return redirect(lib.get_redirect_url())
+
+    existing_wager = Wager.query.filter_by(user=session_user, round=round).first()
+    if not existing_wager:
+        flash(f"Existing Wager not found!", "error")
+        return redirect(lib.get_redirect_url())
+
+    stake = User.query.filter_by(id=request.form["stake"]).one()
+    if not stake:
+        flash(f"User ID: {stake} not found!", "error")
+        return redirect(lib.get_redirect_url())
+    
+    # If they submit a bid of 0, remove their wager.
+    amount = request.form["amount"]
+    if not amount or float(amount) <= 0:
+        return redirect(url_for('remove_wager', event_id=round.event.id, round_id=round.id, wager_id=existing_wager.id))
+    else:
+        amount = float(amount)
+
+    changed = False
+    if stake != existing_wager.stake:
+        changed = True
+        existing_wager.stake = stake
+    
+    if amount != existing_wager.amount:
+        changed = True
+        existing_wager.amount = amount
+
+    if changed:
+        try:
+            db.session.commit()
+        except Exception as e:
+            print(e)
+            flash("Something went wrong", "error")
+    
+    return redirect(lib.get_redirect_url())
 
 @app.route('/event/<event_id>/round/<round_id>/wager/<wager_id>/remove', methods=['GET', 'POST'])
 def remove_wager(event_id, round_id, wager_id):
     wager = Wager.query.filter_by(id=wager_id).first()
     if not wager:
         flash("Wager not found", "warning")
-        return redirect(url_for('event', event_id=event_id))
+        return redirect(lib.get_redirect_url())
     try:
         db.session.delete(wager)
         db.session.commit()
@@ -479,7 +617,7 @@ def remove_wager(event_id, round_id, wager_id):
         print(e)
         flash("Something went wrong", "error")
     flash("Wager removed.", "info")
-    return redirect(url_for('event', event_id=event_id))
+    return redirect(lib.get_redirect_url())
 
 
 if __name__ == '__main__':

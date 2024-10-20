@@ -2,52 +2,59 @@ import random
 import re
 import hashlib
 import secrets
-import uuid
 import binascii
+
+from flask import request, url_for
+
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+
+from youbet import settings
 
 
 def reset_password(user, db):
-    new_password = generate_password()
-    encrypted_password = hash_password(new_password)
-
+    verification_code = generate_reset_code()
+    
     try:
-        user.password = encrypted_password
+        user.password_reset_code = int(verification_code)
+        user.password_reset_tries += 1
         db.session.commit()
     except Exception as e:
         print(e)
         return False
 
-    # TODO
-    # success = send_password_reset_email(user.email, new_password)
-    # if not success:
-    #     return False
+    response = send_email(
+        from_address=settings.RESET_PASSWORD_SENDER_ADDRESS,
+        to_addresses=user.email,
+        subject="YouBet Password Reset",
+        html_content=f"<a>Your verification code is:</a><br><h1>{verification_code}</h1>"
+    )
+    if not response:
+        return False
     return True
 
-# FIXME - google no longer allows using username & password credentials
-#  to login. We will have to use the google cloud APi to send this.
-# def send_password_reset_email(email, new_password):
-#     """Send an email to a user with their new password.
 
-#     Args:
-#         email (str): The email of the user to send the password to.
-#         new_password (str): The new password to send to the user.
+def send_email(from_address, to_addresses, subject, body=None, html_content=None):
+    message = Mail(
+        from_email=from_address,
+        to_emails=to_addresses,
+        subject=subject,
+        plain_text_content=body,
+        html_content=html_content
+    )
+    try:
+        sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+        response = sg.send(message)
+        print(response.status_code)
+        print(response.body)
+        print(response.headers)
+        return response
+    except Exception as e:
+        print(e)
 
-#     Returns:
-#         bool: True on success, False on failure.
-#     """
-#     port = config["password_reset_sender_port"]
-#     smtp_server = config["password_reset_sender_server"]
-#     sender_email = config["password_reset_sender_email"]
-#     sender_password = config["password_reset_sender_password"]
 
-#     context = ssl.create_default_context()
-#     with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
-#         server.login(sender_email, sender_password)
-#         subject = "YouBet - Password Reset"
-#         body = f"Your new password is: {new_password}"
-#         message = f"Subject: {subject}\n\n{body}"
-#         server.sendmail(sender_email, email, message)
-#     return True
+def generate_reset_code():
+    return "".join([str(random.randint(0, 9)) for _ in range(6)])
 
 
 def generate_password(length=5):
@@ -128,10 +135,17 @@ def solve_odds(odds, amount, reverse_odds=False):
     if reverse_odds:
         tokens.reverse()
     ratio = float(tokens[0]) / float(tokens[1])
-    return amount * ratio
+    return round(amount * ratio, 2)
 
 
 def coerce_str_to_bool(value):
     if value and value.lower() in {"true", "yes", "on", "1", "y"}:
         return True
     return False
+
+
+def get_redirect_url(default="main"):
+    return request.args.get("next") or \
+        request.form.get("referrer") or \
+        request.referrer or \
+        url_for(default)
