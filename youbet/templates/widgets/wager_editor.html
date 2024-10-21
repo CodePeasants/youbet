@@ -2,8 +2,9 @@
 - wager
 - round
 - session_user
+- editor_enabled
 -->
-{% if round.accepting_wagers() %}
+{% if round.accepting_wagers() and editor_enabled %}
     {% if wager %}
         <form action="{{ url_for('edit_wager', event_id=round.event.id, round_id=round.id) }}" method="POST">
     {% else %}

@@ -42,6 +42,8 @@ class Event(Base):
     starting_money = db.Column(db.Float, nullable=False)
     active = db.Column(db.Boolean, nullable=False, default=True)
     joinable = db.Column(db.Boolean, nullable=False, default=True)
+    allow_self_bets = db.Column(db.Boolean, nullable=False, default=True)
+    max_participants = db.Column(db.Integer, nullable=True, default=None)
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     creator = db.relationship('User', foreign_keys=[creator_id])
     participants = db.relationship('User', secondary='event_participant')
@@ -75,13 +77,13 @@ class Event(Base):
     def get_status_class(self):
         status = self.get_status()
         if status == self.Status.OPEN:
-            return "text-success"
+            return "bg-success"
         elif status == self.Status.ACTIVE:
-            return "text-primary"
+            return "bg-primary"
         elif status == self.Status.COMPLETE:
-            return "text-secondary"
+            return "bg-secondary"
         else:
-            return "text-danger"
+            return "bg-danger"
     
     def get_current_money(self, user):
         if user not in self.participants:
@@ -146,6 +148,9 @@ class Event(Base):
                     losses += 1
         return wins, losses
     
+    def get_next_round_name(self):
+        return f"Round {len(self.rounds) + 1}"
+    
 
 event_participant = db.Table('event_participant',
     db.Column('event_id', db.Integer, db.ForeignKey('event.id')),
@@ -191,6 +196,15 @@ class Round(Base):
         if not self.accept_wagers or self.winner:
             return False
         return True
+    
+    def has_wagered(self, user_id):
+        if not isinstance(user_id, int):
+            user_id = user_id.id
+
+        for wager in self.wagers:
+            if wager.user.id == user_id:
+                return True
+        return False
 
 
 class Wager(Base):

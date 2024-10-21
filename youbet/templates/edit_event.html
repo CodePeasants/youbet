@@ -20,8 +20,18 @@
     </div>
 
     <div class="mb-3">
+        <label for="max_participants" class="form-label">Max Participants</label>
+        <input type="number" name="max_participants" placeholder="Unlimited" id="max_participants" min="0" max="10000" step="1" class="form-control" {% if event.max_participants is not none %}value="{{ event.max_participants }}"{% endif %}>
+    </div>
+
+    <div class="mb-3">
         <label for="joinable" class="form-label">Joinable</label>
         <input type="checkbox" name="joinable" class="form-check-input" id="joinable" {% if event.joinable %}checked{% endif %}><br>
+    </div>
+
+    <div class="mb-3">
+        <label for="allow_self_bets" class="form-label">Allow Insider Betting</label>
+        <input type="checkbox" name="allow_self_bets" class="form-check-input" id="allow_self_bets" {% if event.allow_self_bets %}checked{% endif %}><br>
     </div>
 
     <div class="mb-3">
@@ -48,7 +58,6 @@
                 </h2>
                 <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="accordian-header" data-bs-parent="#accordion">
                     <div class="accordion-body">
-                        <!-- <button type="button" value="Delete" id="submit" class="btn btn-danger" href="{{ url_for('remove_event', event_id=event.id) }}">Delete Event</button> -->
                         <a class="btn btn-danger" href="{{ url_for('remove_event', event_id=event.id) }}">Delete Event</a>
                     </div>
                 </div>

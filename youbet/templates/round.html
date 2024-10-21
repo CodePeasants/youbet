@@ -52,6 +52,11 @@
 </div>
 
 <h2>Wagers</h2>
+{% if not round.has_wagered(session_user.id) %}
+    {% with editor_enabled=true %}
+        {% include "widgets/wager_editor.html" %}
+    {% endwith %}
+{% endif %}
 <table class="table">
     <tr>
         <th>Player</th>
@@ -65,7 +70,9 @@
         </td>
         {% if session.get('user', {}).get('id') == wager.user.id %}
             <td>
-                {% include "widgets/wager_editor.html" %}
+                {% with editor_enabled=true %}
+                    {% include "widgets/wager_editor.html" %}
+                {% endwith %}
             </td>
         {% else %}
             <td>{{wager.stake.name}}: ${{ wager.amount }}</td>

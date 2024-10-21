@@ -27,14 +27,15 @@
     <tr>
         <td>
             <a href="{{ url_for('round', event_id=event.id, round_id=round.id) }}">{{ round.name }}</a>
-            {% if session_user.id == event.creator.id %}
+            <!-- Disable inline edit options to avoid mis-presses on phones. -->
+            <!-- {% if session_user.id == event.creator.id %}
                 <a class="icon-link ps-3" href="{{ url_for('edit_round', event_id=event.id, round_id=round.id) }}">
                     <i class="bi bi-pencil-fill"></i>
                 </a>
                 <a class="icon-link ps-3" href="{{ url_for('remove_round', event_id=event.id, round_id=round.id) }}">
                     <i class="bi bi-trash"></i>
                 </a>
-            {% endif %}
+            {% endif %} -->
         </td>
         <td>
             <a>{{ round.competitor_a.name }}</a>
@@ -44,7 +45,7 @@
             <a>{{ round.competitor_b.name }}</a>
         </td>
         <td>
-            {% with wager=round_wagers.get(round.id) %}
+            {% with wager=round_wagers.get(round.id), editor_enabled=false %}
                 {% include "widgets/wager_editor.html" %}
             {% endwith %}
         </td>

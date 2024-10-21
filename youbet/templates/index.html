@@ -9,25 +9,24 @@
 <table class="table table-striped">
     <tr>
         <th>Name</th>
-        <th>Status</th>
         <th>Winner</th>
-        <th>Participants</th>
-        <th>Date Created</th>
+        <th>Created</th>
         <th>Creator</th>
     </tr>
     {% for event in events %}
     <tr>
         <td>
+            <span class="badge {{ event.get_status_class() }}"> </span>
             <a href="{{ url_for('event', event_id=event.id) }}">{{ event.name }}</a>
-            {% if session.get('user', {}).get('id') == event.creator.id %}
+            <!-- Disabling the inline edit button, as it's pretty small on a phone and could get in the way when trying
+            to clicl on the event page link itself -->
+            <!-- {% if session.get('user', {}).get('id') == event.creator.id %}
                 <a class="icon-link ps-3" href="{{ url_for('edit_event', event_id=event.id) }}">
                     <i class="bi bi-pencil-fill"></i>
                 </a>
-            {% endif %}
+            {% endif %} -->
         </td>
-        <td class="{{ event.get_status_class() }}">{{ event.get_status() }}</td>
         <td>{% if event.winner %}{{ event.winner[0] }}{% endif %}</td>
-        <td>{{ event.participants | count }}</td>
         <td>{{ event.date_created.date() }}</td>
         <td>{{ event.creator.name }}</td>
     </tr>

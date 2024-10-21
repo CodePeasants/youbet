@@ -250,10 +250,14 @@ def add_event():
         
         starting_money = request.form['starting_money']
         if not starting_money:
-            flash("Please enter a valid starting money", "warning")
-            return redirect(url_for('add_event'))
+            starting_money = app.config.get("DEFAULT_STARTING_MONEY", 100)
+        
+        max_participants = request.form['max_participants']
+        max_participants = int(max_participants) if max_participants else None
+        
+        allow_self_bets = lib.coerce_str_to_bool(request.form.get("allow_self_bets"))
 
-        new_event = Event(name=name, starting_money=starting_money, creator=user)
+        new_event = Event(name=name, starting_money=starting_money, creator=user, allow_self_bets=allow_self_bets, max_participants=max_participants)
         try:
             db.session.add(new_event)
             db.session.commit()
@@ -281,7 +285,11 @@ def edit_event(event_id):
             flash("Please enter a valid starting money", "warning")
             return redirect(url_for('edit_event', event_id=event.id))
         
+        max_participants = request.form['max_participants']
+        max_participants = int(max_participants) if max_participants else None
+        
         joinable = lib.coerce_str_to_bool(request.form.get("joinable"))
+        allow_self_bets = lib.coerce_str_to_bool(request.form.get("allow_self_bets"))
         winner = User.query.filter_by(id=request.form["winner"]).first()
 
         change_made = False
@@ -293,8 +301,16 @@ def edit_event(event_id):
             event.starting_money = starting_money
             change_made = True
         
+        if max_participants != event.max_participants:
+            event.max_participants = max_participants
+            change_made = True
+        
         if joinable != event.joinable:
             event.joinable = joinable
+            change_made = True
+        
+        if allow_self_bets != event.allow_self_bets:
+            event.allow_self_bets = allow_self_bets
             change_made = True
         
         if winner != event.winner:
@@ -359,9 +375,17 @@ def add_event_user(event_id, user_id):
         flash("Event not found", "error")
         return redirect(lib.get_redirect_url())
     
+    if event.max_participants is not None and len(event.participants) >= event.max_participants:
+        flash("Event is full!", "warning")
+        return redirect(lib.get_redirect_url())
+
     user = User.query.filter_by(id=user_id).first()
     if not user:
         flash("User not found", "error")
+        return redirect(lib.get_redirect_url())
+    
+    if user in event.participants:
+        flash("User already participating in event.", "warning")
         return redirect(lib.get_redirect_url())
     
     try:
@@ -401,8 +425,7 @@ def add_round(event_id):
 
         name = request.form['name']
         if not name:
-            flash("Please enter a valid name", "warning")
-            return redirect(url_for("add_round", event_id=event.id))
+            name = event.get_next_round_name()
         
         odds = request.form['odds']
         if odds and not lib.validate_odds(odds):
@@ -503,7 +526,7 @@ def remove_round(event_id, round_id):
     round = Round.query.filter_by(id=round_id).first()
     if not round:
         flash("Round not found", "warning")
-        return redirect(lib.get_redirect_url())
+        return redirect(url_for("event", event_id=event_id))
     
     try:
         db.session.delete(round)
@@ -511,7 +534,7 @@ def remove_round(event_id, round_id):
     except Exception as e:
         print(e)
         flash("Something went wrong", "error")
-    return redirect(lib.get_redirect_url())
+    return redirect(url_for("event", event_id=event_id))
 
 
 @app.route('/event/<event_id>/round/<round_id>/add_wager', methods=['GET', 'POST'])
@@ -535,6 +558,11 @@ def add_wager(event_id, round_id):
     if not stake:
         flash(f"User ID: {stake} not found!", "error")
         return redirect(lib.get_redirect_url())
+    
+    if not round.event.allow_self_bets:
+        if user == round.competitor_a or user == round.competitor_b:
+            flash(f"This event does not allow betting on rounds you participate in.", "warning")
+            return redirect(lib.get_redirect_url())
     
     amount = request.form["amount"]
     # If they submit a bid of 0, remove their wager.
