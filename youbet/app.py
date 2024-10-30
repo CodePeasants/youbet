@@ -13,7 +13,7 @@ bootstrap icons: https://icons.getbootstrap.com/
 import os
 from flask import Flask, render_template, session, url_for, redirect, request, flash
 from youbet import lib
-from youbet.database import db, User, Event, Round, Wager
+from youbet.database import db, User, Event, Round, Wager, Competitor, CompetitorBase
 
 
 app = Flask(__name__)
@@ -256,8 +256,17 @@ def add_event():
         max_participants = int(max_participants) if max_participants else None
         
         allow_self_bets = lib.coerce_str_to_bool(request.form.get("allow_self_bets"))
+        participants_are_competitors = lib.coerce_str_to_bool(request.form.get("participants_are_competitors"))
 
-        new_event = Event(name=name, starting_money=starting_money, creator=user, allow_self_bets=allow_self_bets, max_participants=max_participants)
+        new_event = Event(
+            name=name,
+            starting_money=starting_money,
+            creator=user,
+            allow_self_bets=allow_self_bets,
+            max_participants=max_participants,
+            participants_are_competitors=participants_are_competitors
+        )
+        
         try:
             db.session.add(new_event)
             db.session.commit()
@@ -290,6 +299,7 @@ def edit_event(event_id):
         
         joinable = lib.coerce_str_to_bool(request.form.get("joinable"))
         allow_self_bets = lib.coerce_str_to_bool(request.form.get("allow_self_bets"))
+        participants_are_competitors = lib.coerce_str_to_bool(request.form.get("participants_are_competitors"))
         winner = User.query.filter_by(id=request.form["winner"]).first()
 
         change_made = False
@@ -311,6 +321,10 @@ def edit_event(event_id):
         
         if allow_self_bets != event.allow_self_bets:
             event.allow_self_bets = allow_self_bets
+            change_made = True
+        
+        if participants_are_competitors != event.participants_are_competitors:
+            event.participants_are_competitors = participants_are_competitors
             change_made = True
         
         if winner != event.winner:
@@ -345,6 +359,89 @@ def remove_event(event_id):
         print(e)
         flash("Something went wrong", "error")
     return redirect(url_for("main"))
+
+
+@app.route("/event/<event_id>/add_competitor", methods=["GET", "POST"])
+def add_competitor(event_id):
+    if request.method == "POST":
+        event = Event.query.filter_by(id=event_id).first()
+        if not event:
+            flash("Event not found", "error")
+            return redirect(url_for("event", event_id=event_id))
+        
+        name = request.form["name"]
+        if not name:
+            flash(f"You must enter a name", "warning")
+            return redirect(url_for("event", event_id=event_id))
+        
+        if (event.participants_are_competitors and name in [x.name for x in event.participants]) or \
+                name in [x.name for x in event.competitors]:
+            flash(f"Competitor with name: {name} already exists.", "warning")
+            return redirect(url_for("event", event_id=event_id))
+        
+        competitor = Competitor(name=name, event_id=event_id)
+        try:
+            db.session.add(competitor)
+            db.session.commit()
+        except Exception as e:
+            print(e)
+            flash("Something went wrong", "error")
+
+        return redirect(url_for("event", event_id=event_id))
+    else:
+        return redirect(lib.get_redirect_url())
+    
+
+@app.route("/event/<event_id>/remove_competitor/<competitor_id>", methods=["GET", "POST"])
+def remove_competitor(event_id, competitor_id):
+    event = Event.query.filter_by(id=event_id).first()
+    if not event:
+        flash("Event not found", "error")
+        return redirect(lib.get_redirect_url())
+
+    competitor = Competitor.query.filter_by(id=competitor_id).first()
+    if not competitor:
+        flash(f"Competitor with ID: {competitor_id} not found", "error")
+        return redirect(lib.get_redirect_url())
+
+    try:
+        db.session.delete(competitor)
+        db.session.commit()
+    except Exception as e:
+        print(e)
+        flash("Something went wrong", "error")
+    return redirect(lib.get_redirect_url())
+
+
+@app.route("/event/<event_id>/edit_competitor/<competitor_id>", methods=["GET", "POST"])
+def edit_competitor(event_id, competitor_id):
+    event = Event.query.filter_by(id=event_id).first()
+    if not event:
+        flash("Event not found", "error")
+        return redirect(lib.get_redirect_url())
+
+    competitor = Competitor.query.filter_by(id=competitor_id).first()
+    if not competitor:
+        flash(f"Competitor with ID: {competitor_id} not found", "error")
+        return redirect(lib.get_redirect_url())
+    
+    name = request.form["name"]
+    if not name:
+        flash(f"Removing competitor: {competitor_id}", "info")
+        return redirect(url_for("remove_competitor", event_id=event_id, competitor_id=competitor_id))
+    
+    if (event.participants_are_competitors and name in [x.name for x in event.participants]) or \
+            name in [x.name for x in event.competitors]:
+        flash(f"Competitor with name: {name} already exists.", "warning")
+        return redirect(lib.get_redirect_url())
+
+    try:
+        competitor.name = name
+        db.session.commit()
+    except Exception as e:
+        print(e)
+        flash("Something went wrong", "error")
+    return redirect(lib.get_redirect_url())
 
 
 @app.route('/event/<event_id>/remove_user/<user_id>', methods=['GET','POST'])
@@ -434,12 +531,12 @@ def add_round(event_id):
         if not odds:
             odds = "1:1"
         
-        player_a = User.query.filter_by(id=request.form['player_a']).first()
+        player_a = CompetitorBase.query.filter_by(id=request.form['player_a']).first()
         if not player_a:
             flash("Player A not found", "error")
             return redirect(url_for("add_round", event_id=event.id))
         
-        player_b = User.query.filter_by(id=request.form['player_b']).first()
+        player_b = CompetitorBase.query.filter_by(id=request.form['player_b']).first()
         if not player_b:
             flash("Player B not found", "error")
             return redirect(url_for("add_round", event_id=event.id))
@@ -476,18 +573,18 @@ def edit_round(event_id, round_id):
             flash("Please enter a valid odds", "warning")
             return redirect(url_for('edit_round', event_id=event_id, round_id=round_id))
         
-        player_a = User.query.filter_by(id=request.form['player_a']).first()
+        player_a = CompetitorBase.query.filter_by(id=request.form['player_a']).first()
         if not player_a:
             flash("Player A not found", "error")
             return redirect(url_for('edit_round', event_id=event_id, round_id=round_id))
         
-        player_b = User.query.filter_by(id=request.form['player_b']).first()
+        player_b = CompetitorBase.query.filter_by(id=request.form['player_b']).first()
         if not player_b:
             flash("Player B not found", "error")
             return redirect(url_for('edit_round', event_id=event_id, round_id=round_id))
         
         accept_wagers = lib.coerce_str_to_bool(request.form.get("accept_wagers"))
-        winner = User.query.filter_by(id=request.form['winner']).first()
+        winner = CompetitorBase.query.filter_by(id=request.form['winner']).first()
 
         changed = False
         if name != round.name:
@@ -554,13 +651,13 @@ def add_wager(event_id, round_id):
         flash(f"User ID: {user_id} not found!", "error")
         return redirect(lib.get_redirect_url())
     
-    stake = User.query.filter_by(id=request.form["stake"]).one()
+    stake = CompetitorBase.query.filter_by(id=request.form["stake"]).one()
     if not stake:
         flash(f"User ID: {stake} not found!", "error")
         return redirect(lib.get_redirect_url())
     
     if not round.event.allow_self_bets:
-        if user == round.competitor_a or user == round.competitor_b:
+        if (round.competitor_a and user.id == round.competitor_a.id) or (round.competitor_b and user.id == round.competitor_b.id):
             flash(f"This event does not allow betting on rounds you participate in.", "warning")
             return redirect(lib.get_redirect_url())
     
@@ -602,7 +699,7 @@ def edit_wager(event_id, round_id):
         flash(f"Existing Wager not found!", "error")
         return redirect(lib.get_redirect_url())
 
-    stake = User.query.filter_by(id=request.form["stake"]).one()
+    stake = CompetitorBase.query.filter_by(id=request.form["stake"]).one()
     if not stake:
         flash(f"User ID: {stake} not found!", "error")
         return redirect(lib.get_redirect_url())

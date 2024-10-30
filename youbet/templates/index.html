@@ -26,7 +26,7 @@
                 </a>
             {% endif %} -->
         </td>
-        <td>{% if event.winner %}{{ event.winner[0] }}{% endif %}</td>
+        <td>{% if event.winner %}{{ event.winner.name }}{% endif %}</td>
         <td>{{ event.date_created.date() }}</td>
         <td>{{ event.creator.name }}</td>
     </tr>
