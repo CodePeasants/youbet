@@ -1,5 +1,16 @@
 # Unreleased
 
+# 0.3.0 - 2024-10-29
+**Note:** This version modifies the database tables and will require rebuilding the database.
+
+## Added
+- A new `Competitor` table and associated controlls to make non-player competitors. This is useful if players in the event are betting on matches
+between competitors that are not participating in betting. E.g. if betting on a sporting event between third parties.
+- An option on `Event`'s to decide if the participating players are also considered competitors or not.
+
+## Changed
+- `User` table now inherits from a `CompetitorBase` table along with the new `Competitor` table using joined-table inheritance. So they can be used interchangeably where needed.
+
 # 0.2.1 - 2024-10-29
 ## Fixed
 - No longer produce internal server error when a user has a wager in a completed round and tries to access a round where they do not have a wager.

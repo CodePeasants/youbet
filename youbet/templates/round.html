@@ -8,10 +8,10 @@
                 <div class="card" style="width: 18rem; text-align: center; {% if round.winner == round.competitor_a %}border-color: green;{% elif round.winner == round.competitor_b %}border-color: red;{% endif %} ">
                     <div class="card-body">
                         <h5 class="card-title">{{round.competitor_a.name}}</h5>
-                        {% with wins, losses = event.get_user_record(round.competitor_a) %}
+                        {% with wins, losses = event.get_competitor_record(round.competitor_a) %}
                             <h6 class="card-subtitle mb-2 text-muted">Overall record: {{ wins }}W - {{ losses }}L</h6>
                         {% endwith %}
-                        {% with wins, losses = event.get_user_record(round.competitor_a, round.competitor_b) %}
+                        {% with wins, losses = event.get_competitor_record(round.competitor_a, round.competitor_b) %}
                             <h6 class="card-subtitle mb-2 text-muted">Record vs {{ round.competitor_b.name }}: {{ wins }}W - {{ losses }}L</h6>
                         {% endwith %}
                     </div>
@@ -37,10 +37,10 @@
                 <div class="card" style="width: 18rem; text-align: center; {% if round.winner == round.competitor_b %}border-color: green;{% elif round.winner == round.competitor_a %}border-color: red;{% endif %} ">
                     <div class="card-body">
                         <h5 class="card-title">{{round.competitor_b.name}}</h5>
-                        {% with wins, losses = event.get_user_record(round.competitor_b) %}
+                        {% with wins, losses = event.get_competitor_record(round.competitor_b) %}
                             <h6 class="card-subtitle mb-2 text-muted">Overall record: {{ wins }}W - {{ losses }}L</h6>
                         {% endwith %}
-                        {% with wins, losses = event.get_user_record(round.competitor_b, round.competitor_a) %}
+                        {% with wins, losses = event.get_competitor_record(round.competitor_b, round.competitor_a) %}
                             <h6 class="card-subtitle mb-2 text-muted">Record vs {{ round.competitor_a.name }}: {{ wins }}W - {{ losses }}L</h6>
                         {% endwith %}
                     </div>
@@ -52,7 +52,7 @@
 </div>
 
 <h2>Wagers</h2>
-{% if not round.has_wagered(session_user.id) %}
+{% if not round.has_wagered(session_user.id) and round.can_wager(session_user.id) %}
     {% with editor_enabled=true %}
         {% include "widgets/wager_editor.html" %}
     {% endwith %}

@@ -13,8 +13,8 @@
         <label for="player_a" class="input-group-text">Player A</label>
         <select name="player_a" class="form-control" id="player_a">
             <option value="" {% if not round.competitor_a %}selected="selected"{% endif %}>N/A</option>
-            {% for user in event.participants %}
-                <option value="{{ user.id }}" {% if round.competitor_a and round.competitor_a.id == user.id %}selected="selected"{% endif %}>{{ user.name }}</option>
+            {% for competitor in event.get_competitors() %}
+                <option value="{{ competitor.id }}" {% if round.competitor_a and round.competitor_a.id == competitor.id %}selected="selected"{% endif %}>{{ competitor.name }}</option>
             {% endfor %}
         </select>
 
@@ -24,8 +24,8 @@
         <label for="player_b" class="input-group-text">Player B</label>
         <select name="player_b" class="form-control" id="player_b">
             <option value="" {% if not round.competitor_b %}selected="selected"{% endif %}>N/A</option>
-            {% for user in event.participants %}
-                <option value="{{ user.id }}" {% if round.competitor_b and round.competitor_b.id == user.id %}selected="selected"{% endif %}>{{ user.name }}</option>
+            {% for competitor in event.get_competitors() %}
+                <option value="{{ competitor.id }}" {% if round.competitor_b and round.competitor_b.id == competitor.id %}selected="selected"{% endif %}>{{ competitor.name }}</option>
             {% endfor %}
         </select>
     </div>

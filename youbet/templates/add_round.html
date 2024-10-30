@@ -13,8 +13,8 @@
         <label for="player_a" class="input-group-text">Player A</label>
         <select name="player_a" class="form-control" id="player_a">
             <option value="" selected="selected">N/A</option>
-            {% for user in event.participants %}
-                <option value="{{ user.id }}">{{ user.name }}</option>
+            {% for competitor in event.get_competitors() %}
+                <option value="{{ competitor.id }}">{{ competitor.name }}</option>
             {% endfor %}
         </select>
 
@@ -24,8 +24,8 @@
         <label for="player_b" class="input-group-text">Player B</label>
         <select name="player_b" class="form-control" id="player_b">
             <option value="" selected="selected">N/A</option>
-            {% for user in event.participants %}
-                <option value="{{ user.id }}">{{ user.name }}</option>
+            {% for competitor in event.get_competitors() %}
+                <option value="{{ competitor.id }}">{{ competitor.name }}</option>
             {% endfor %}
         </select>
     </div>

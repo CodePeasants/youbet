@@ -24,6 +24,11 @@
         <label for="allow_self_bets" class="form-label">Allow Insider Betting</label>
         <input type="checkbox" name="allow_self_bets" class="form-check-input" id="allow_self_bets" {% if event and event.allow_self_bets %}checked{% endif %}><br>
     </div>
+
+    <div class="mb-3">
+        <label for="participants_are_competitors" class="form-label">Participants Are Competitors</label>
+        <input type="checkbox" name="participants_are_competitors" class="form-check-input" id="participants_are_competitors" {% if event and event.participants_are_competitors %}checked{% endif %}><br>
+    </div>
     
     <div class="mb-3">
         <button type="submit" value="Create Event" id="submit" class="btn btn-primary">Submit</button>

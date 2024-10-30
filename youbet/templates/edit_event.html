@@ -35,6 +35,11 @@
     </div>
 
     <div class="mb-3">
+        <label for="participants_are_competitors" class="form-label">Participants Are Competitors</label>
+        <input type="checkbox" name="participants_are_competitors" class="form-check-input" id="participants_are_competitors" {% if event.participants_are_competitors %}checked{% endif %}><br>
+    </div>
+
+    <div class="mb-3">
         <label for="winner" class="form-label">Winner</label>
         <select name="winner" class="form-control" id="winner">
             <option value="" {% if not event.winner %}selected="selected"{% endif %}>N/A</option>

@@ -64,6 +64,16 @@
                 <a class="btn btn-warning" href="{{ url_for('remove_event_user', event_id=event.id, user_id=session['user']['id']) }}">Leave Event</a>
             {% endif %}
         {% endif %}
+
+        {% if session_user.id == event.creator.id %}
+            <form action="{{ url_for('add_competitor', event_id=event.id) }}" method="POST">   
+                <div class="input-group mb-3">
+                    <label for="name" class="input-group-text">Competitor Name</label>
+                    <input type="text" name="name" id="name" class="form-control">
+                    <button type="submit" value="+" class="btn btn-primary">Add Competitor</button>
+                </div>
+            </form>
+        {% endif %}
     {% endif %}
 </h2>
 
@@ -86,6 +96,34 @@
         {% if session_user.id == event.creator.id %}
             <td>
                 <a href="{{ url_for('remove_event_user', event_id=event.id, user_id=user.id) }}">Remove</a>
+            </td>
+        {% else %}
+            <td></td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+
+    {% for competitor in event.competitors %}
+    <tr>
+        <td>
+            {% if session_user.id == event.creator.id %}
+                <form action="{{ url_for('edit_competitor', event_id=event.id, competitor_id=competitor.id) }}" method="POST">
+                    <div class="input-group mb-3">
+                        <label for="name" class="input-group-text">Competitor</label>
+                        <input type="text" name="name" placeholder="Name" id="name" class="form-control" value="{{ competitor.name }}">
+                        <button type="submit" value="+" class="btn btn-primary">
+                            <i class="bi bi-upload"></i>
+                        </button>
+                    </div>
+                </form>
+            {% else %}
+                <a class="text-primary">{{ competitor.name }}</a><br>
+            {% endif %}
+        </td>
+        <td></td>
+        {% if session_user.id == event.creator.id %}
+            <td>
+                <a href="{{ url_for('remove_competitor', event_id=event.id, competitor_id=competitor.id) }}">Remove</a>
             </td>
         {% else %}
             <td></td>
