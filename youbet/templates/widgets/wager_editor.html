@@ -17,7 +17,18 @@
             </select>
 
             <label for="amount" class="input-group-text">$</label>
-            <input type="number" name="amount" placeholder="0.00" id="amount" min="0.00" max="{{round.event.get_available_money(session_user.id, wager)}}" step="0.01" class="form-control" {% if wager %}value="{{wager.amount}}"{%endif%}>
+            <input
+                type="number"
+                name="amount"
+                placeholder="0.00"
+                id="amount"
+                min="0.00"
+                {% if wager %}max="{{round.event.get_available_money(session_user.id, wager)}}"
+                {% else %}max="{{round.event.get_available_money(session_user.id)}}"{% endif %}
+                step="0.01"
+                class="form-control"
+                {% if wager %}value="{{wager.amount}}"{% endif %}
+            >
             <button type="submit" value="+" class="btn btn-primary">
                 <i class="bi bi-upload"></i>
             </button>

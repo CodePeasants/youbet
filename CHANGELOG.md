@@ -1,5 +1,9 @@
 # Unreleased
 
+# 0.2.1 - 2024-10-29
+## Fixed
+- No longer produce internal server error when a user has a wager in a completed round and tries to access a round where they do not have a wager.
+
 # 0.2.0 - 2024-10-20
 **Note:** This version modifies the database tables and will require rebuilding the database.
 
