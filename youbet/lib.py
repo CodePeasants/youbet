@@ -3,8 +3,9 @@ import re
 import hashlib
 import secrets
 import binascii
+from functools import wraps
 
-from flask import request, url_for
+from flask import request, url_for, session, redirect, flash
 
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
@@ -149,3 +150,92 @@ def get_redirect_url(default="main"):
         request.form.get("referrer") or \
         request.referrer or \
         url_for(default)
+
+
+class Permission:
+    
+    @staticmethod
+    def event_owner(session_user_id, **kwargs):
+        from youbet.database import Event
+        event_id = kwargs.get("event_id")
+        if not event_id:
+            return False, "Unable to get event_id from kwargs on route."
+        
+        event = Event.query.filter_by(id=event_id).first()
+        if not event:
+            return False, "Event not found when wrong attempting to authorize route."
+        
+        if str(session_user_id) != str(event.creator.id):
+            return False, "Unauthorized attempt to access route."
+        return True, None
+    
+    @staticmethod
+    def wager_owner(session_user_id, **kwargs):
+        from youbet.database import Wager, Round
+        wager_id = kwargs.get("wager_id")
+        wager = None
+        if not wager_id:
+            round_id = kwargs.get("round_id")
+            if not round_id:
+                return False, "Unable to get wager_id from kwargs on route."
+            
+            round = Round.query.filter_by(id=round_id).first()
+            if not round:
+                return False, "Unable to get wager_id from kwargs on route."
+            for wager in round.wagers:
+                if str(wager.user.id) == str(session_user_id):
+                    break
+            else:
+                return False, "Unable to get wager_id from kwargs on route."
+        else:
+            wager = Wager.query.filter_by(id=wager_id).first()
+            if not wager:
+                return False, "Wager not found when wrong attempting to authorize route."
+        
+        if wager is None:
+            return False, "Unable to get wager_id from kwargs on route."
+        
+        if str(session_user_id) != str(wager.user.id):
+            return False, "Unauthorized attempt to access route."
+        return True, None
+    
+    @staticmethod
+    def session_user(session_user_id, **kwargs):
+        user_id = kwargs.get("user_id")
+        if user_id is None:
+            return False, "Bug in required authorization, no user id to check."
+        
+        if str(session_user_id) != str(user_id):
+            return False, "Unauthorized access attempt."
+        return True, None
+
+
+def require_permission(permissions=Permission.event_owner):
+    """A decorator to check that the user accessing the route is the owner of the event identified by the route parameter 'event_id'.
+    If the user is not the owner of the event, the request is redirected to the 'main' endpoint with an error message flashed.
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(permissions=permissions, *args, **kwargs):
+            session_user = session.get("user")
+            if not session_user:
+                flash("Unauthorized - user not logged in.", "error")
+                return redirect(get_redirect_url())
+            
+            if not hasattr(permissions, "__iter__"):
+                permissions = [permissions]
+            
+            message = None
+            for permission in permissions:
+                result, message = permission(session_user.get("id"), **kwargs)
+                if result:
+                    break
+            else:
+                if message:
+                    flash(message, "error")
+                return redirect(get_redirect_url())
+            
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+

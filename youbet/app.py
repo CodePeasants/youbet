@@ -276,7 +276,8 @@ def add_event():
     else:
         return render_template('add_event.html')
 
-@app.route('/event/<event_id>/edit', methods=['GET', 'POST']) 
+@app.route('/event/<event_id>/edit', methods=['GET', 'POST'])
+@lib.require_permission(lib.Permission.event_owner)
 def edit_event(event_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
@@ -346,6 +347,7 @@ def edit_event(event_id):
 
 
 @app.route('/event/<event_id>/remove', methods=['GET', 'POST'])
+@lib.require_permission(lib.Permission.event_owner)
 def remove_event(event_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
@@ -362,6 +364,7 @@ def remove_event(event_id):
 
 
 @app.route("/event/<event_id>/add_competitor", methods=["GET", "POST"])
+@lib.require_permission(lib.Permission.event_owner)
 def add_competitor(event_id):
     if request.method == "POST":
         event = Event.query.filter_by(id=event_id).first()
@@ -393,6 +396,7 @@ def add_competitor(event_id):
     
 
 @app.route("/event/<event_id>/remove_competitor/<competitor_id>", methods=["GET", "POST"])
+@lib.require_permission(lib.Permission.event_owner)
 def remove_competitor(event_id, competitor_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
@@ -414,6 +418,7 @@ def remove_competitor(event_id, competitor_id):
 
 
 @app.route("/event/<event_id>/edit_competitor/<competitor_id>", methods=["GET", "POST"])
+@lib.require_permission(lib.Permission.event_owner)
 def edit_competitor(event_id, competitor_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
@@ -445,6 +450,7 @@ def edit_competitor(event_id, competitor_id):
 
 
 @app.route('/event/<event_id>/remove_user/<user_id>', methods=['GET','POST'])
+@lib.require_permission([lib.Permission.event_owner, lib.Permission.session_user])
 def remove_event_user(event_id, user_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
@@ -466,6 +472,7 @@ def remove_event_user(event_id, user_id):
 
 
 @app.route('/event/<event_id>/add_user/<user_id>', methods=['GET', 'POST'])
+@lib.require_permission(lib.Permission.session_user)
 def add_event_user(event_id, user_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
@@ -474,6 +481,10 @@ def add_event_user(event_id, user_id):
     
     if event.max_participants is not None and len(event.participants) >= event.max_participants:
         flash("Event is full!", "warning")
+        return redirect(lib.get_redirect_url())
+    
+    if event.winner or not event.joinable:
+        flash("Event is not joinable!", "warning")
         return redirect(lib.get_redirect_url())
 
     user = User.query.filter_by(id=user_id).first()
@@ -507,6 +518,7 @@ def round(event_id, round_id):
 
 
 @app.route("/event/<event_id>/add_round", methods=['GET', 'POST'])
+@lib.require_permission(lib.Permission.event_owner)
 def add_round(event_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
@@ -519,6 +531,10 @@ def add_round(event_id):
             if len(event.rounds) >= max_rounds:
                 flash(f"You have already created the maximum number of allowed rounds ({max_rounds})!.", "error")
                 return redirect(url_for('add_round', event_id=event.id))
+        
+        if event.winner:
+            flash("Event already has a winner!", "warning")
+            return redirect(url_for("event", event_id=event.id))
 
         name = request.form['name']
         if not name:
@@ -556,6 +572,7 @@ def add_round(event_id):
 
 
 @app.route('/event/<event_id>/round/<round_id>/edit', methods=['GET', 'POST'])
+@lib.require_permission(lib.Permission.event_owner)
 def edit_round(event_id, round_id):
     round = Round.query.filter_by(id=round_id).first()
     if not round:
@@ -619,6 +636,7 @@ def edit_round(event_id, round_id):
         return render_template('edit_round.html', event=round.event, round=round, session_user=session_user)
 
 @app.route('/event/<event_id>/round/<round_id>/remove', methods=['GET', 'POST'])
+@lib.require_permission(lib.Permission.event_owner)
 def remove_round(event_id, round_id):
     round = Round.query.filter_by(id=round_id).first()
     if not round:
@@ -639,6 +657,10 @@ def add_wager(event_id, round_id):
     round = Round.query.filter_by(id=round_id).one()
     if not round:
         flash("Round not found", "error")
+        return redirect(lib.get_redirect_url())
+    
+    if not round.accepting_wagers():
+        flash("Round not accepting wagers.", "warning")
         return redirect(lib.get_redirect_url())
     
     user_id = session.get("user", {}).get("id")
@@ -683,10 +705,15 @@ def add_wager(event_id, round_id):
     return redirect(lib.get_redirect_url())
 
 @app.route('/event/<event_id>/round/<round_id>/edit_wager', methods=['GET', 'POST'])
+@lib.require_permission(lib.Permission.wager_owner)
 def edit_wager(event_id, round_id):
     round = Round.query.filter_by(id=round_id).one()
     if not round:
         flash("Round not found", "error")
+        return redirect(lib.get_redirect_url())
+
+    if not round.accepting_wagers():
+        flash("Round not accepting adjustments to wagers", "warning")
         return redirect(lib.get_redirect_url())
     
     session_user = User.query.filter_by(id=session.get("user", {}).get('id')).first()
@@ -730,7 +757,17 @@ def edit_wager(event_id, round_id):
     return redirect(lib.get_redirect_url())
 
 @app.route('/event/<event_id>/round/<round_id>/wager/<wager_id>/remove', methods=['GET', 'POST'])
+@lib.require_permission(lib.Permission.wager_owner)
 def remove_wager(event_id, round_id, wager_id):
+    round = Round.query.filter_by(id=round_id).first()
+    if not round:
+        flash("Round not found", "error")
+        return redirect(lib.get_redirect_url())
+    
+    if not round.accepting_wagers():
+        flash("Round not accepting adjustments to wagers", "warning")
+        return redirect(lib.get_redirect_url())
+
     wager = Wager.query.filter_by(id=wager_id).first()
     if not wager:
         flash("Wager not found", "warning")

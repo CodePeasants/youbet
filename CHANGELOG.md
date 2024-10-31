@@ -1,5 +1,13 @@
 # Unreleased
 
+# 0.4.0 - 2024-10-30
+## Added
+- Permissions security for access attempts to unauthorized routes.
+
+## Fixed
+- Join event button no longer displays when the event is not joinable.
+- Users who have not refreshed pages that include editors that post to routes that should no longer be available will now get a warning message instead of allowing the post.
+
 # 0.3.0 - 2024-10-29
 **Note:** This version modifies the database tables and will require rebuilding the database.
 

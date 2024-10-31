@@ -171,7 +171,7 @@ class Event(Base):
 
     def get_competitor(self, id):
         return CompetitorBase.query.filter_by(id=id).first()
-
+    
 
 event_participant = db.Table('event_participant',
     db.Column('event_id', db.Integer, db.ForeignKey('event.id')),
@@ -224,7 +224,7 @@ class Round(Base):
         return ("", "")
     
     def accepting_wagers(self):
-        if not self.accept_wagers or self.winner:
+        if not self.accept_wagers or self.winner or self.event.winner:
             return False
         return True
     

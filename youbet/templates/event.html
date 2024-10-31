@@ -57,7 +57,7 @@
 <h2>
     <a>Players</a>
     {% if event.get_status() in [event.Status.OPEN, event.Status.ACTIVE] %}
-        {% if session_user.id not in event.get_participant_ids() %}
+        {% if session_user.id not in event.get_participant_ids() and event.joinable %}
             <a class="btn btn-primary" href="{{ url_for('add_event_user', event_id=event.id, user_id=session['user']['id']) }}">Join Event</a>
         {% else %}
             {% if event.get_status() != event.Status.ACTIVE %}
