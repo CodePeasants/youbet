@@ -55,3 +55,15 @@ def test_wager(db):
     assert wager.user == user
     assert wager.stake == user
     assert wager.round == round
+
+
+def test_wager_get_outcome(db):
+    user_a = User(name="test_a", email="test_a", password="test", salt=lib.generate_salt())
+    user_b = User(name="test_b", email="test_b", password="test", salt=lib.generate_salt())
+    event = Event(name="test", starting_money=100, active=True, joinable=True, creator=user_a, allow_self_bets=True)
+    round = Round(name="test", event=event, competitor_a=user_a, competitor_b=user_b, odds="2:1", winner=user_b)
+    wager = Wager(amount=10, user=user_a, stake=user_b, round=round)
+    db.session.add(wager)
+    db.session.commit()
+
+    assert wager.get_outcome() == 10

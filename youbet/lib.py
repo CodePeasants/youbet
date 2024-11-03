@@ -127,7 +127,9 @@ def validate_odds(odds):
     if not isinstance(odds, str):
         return False
     if not re.match(r"^\d+(\.\d+)?:\d+(\.\d+)?$", odds):
-        return False 
+        return False
+    if not any([float(x) == 1 for x in odds.split(":")]):
+        return False
     return True
 
 
@@ -135,7 +137,7 @@ def solve_odds(odds, amount, reverse_odds=False):
     tokens = odds.split(":")
     if reverse_odds:
         tokens.reverse()
-    ratio = float(tokens[0]) / float(tokens[1])
+    ratio = float(tokens[0])
     return round(amount * ratio, 2)
 
 

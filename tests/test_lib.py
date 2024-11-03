@@ -66,7 +66,7 @@ VALIDATE_ODDS_DATA = [
     ("2:1", True),
     ("1:2", True),
     ("1.5:1", True),
-    ("1.5:2.65312", True),
+    ("1.5:2.65312", False),
     ("a", False),
     ("a:1", False),
     ("1:a", False),
@@ -80,11 +80,11 @@ def test_validate_odds(odds, expected_result):
 SOLVE_ODDS_DATA = [
     (100, "1:1", 100, False),
     (100, "2:1", 200, False),
-    (100, "4:2", 200, False),
-    (100, "1:2", 50, False),
+    (100, "4:2", 400, False),
+    (100, "1:2", 100, False),
     (100, "1:1", 100, True),
-    (100, "2:1", 50, True),
-    (100, "4:2", 50, True),
+    (100, "2:1", 100, True),
+    (100, "4:2", 200, True),
     (100, "1:2", 200, True),
 ]
 

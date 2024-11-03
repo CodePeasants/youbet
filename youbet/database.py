@@ -20,6 +20,13 @@ class CompetitorBase(Base):
     #  accidentally using a user ID with a competitor ID.
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=False, nullable=False)
+    column_type = db.Column(db.String(50))
+
+    __mapper_args__ = {
+        "polymorphic_identity": "competitor_base",
+        "with_polymorphic": "*",
+        "polymorphic_on": column_type
+    }
 
 
 class User(CompetitorBase, Base):
@@ -31,6 +38,11 @@ class User(CompetitorBase, Base):
     date_registered = db.Column(db.DateTime, nullable=False, default=now)
     password_reset_code = db.Column(db.Integer, nullable=True, default=None)
     password_reset_tries = db.Column(db.Integer, nullable=False, default=0)
+
+    __mapper_args__ = {
+        "polymorphic_identity": "user",
+        "with_polymorphic": "*",
+    }
 
     def __repr__(self):
         return '<User %r>' % self.id
@@ -142,11 +154,13 @@ class Event(Base):
         if versus is not None:
             rounds = db.session.query(Round).filter(
                 ((Round.competitor_a == competitor) | (Round.competitor_b == competitor)) &
-                ((Round.competitor_a == versus) | (Round.competitor_b == versus))
+                ((Round.competitor_a == versus) | (Round.competitor_b == versus)) &
+                (Round.event == self)
             ).all()
         else:
             rounds = db.session.query(Round).filter(
-                (Round.competitor_a == competitor) | (Round.competitor_b == competitor)
+                (Round.competitor_a == competitor) | (Round.competitor_b == competitor) &
+                (Round.event == self)
             ).all()
         
         wins = 0
@@ -184,6 +198,11 @@ class Competitor(CompetitorBase, Base):
     id = db.Column(db.Integer, db.ForeignKey("competitor_base.id"), primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'))
     event = db.relationship('Event', back_populates='competitors')
+
+    __mapper_args__ = {
+        "polymorphic_identity": "competitor",
+        "with_polymorphic": "*",
+    }
 
     def __repr__(self):
         return '<Competitor %r>' % self.id

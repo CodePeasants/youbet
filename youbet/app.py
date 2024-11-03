@@ -355,6 +355,12 @@ def remove_event(event_id):
         return redirect(lib.get_redirect_url())
     
     try:
+        for round in event.rounds:
+            for wager in round.wagers:
+                db.session.delete(wager)
+            db.session.delete(round)
+        for competitor in event.competitors:
+            db.session.delete(competitor)
         db.session.delete(event)
         db.session.commit()
     except Exception as e:
@@ -456,6 +462,10 @@ def remove_event_user(event_id, user_id):
     if not event:
         flash("Event not found", "error")
         return redirect(lib.get_redirect_url())
+
+    if not event.joinable or event.winner:
+        flash("Cannot join event", "warning")
+        return redirect(lib.get_redirect_url())
     
     user = User.query.filter_by(id=user_id).first()
     if not user:
@@ -477,6 +487,10 @@ def add_event_user(event_id, user_id):
     event = Event.query.filter_by(id=event_id).first()
     if not event:
         flash("Event not found", "error")
+        return redirect(lib.get_redirect_url())
+
+    if not event.joinable or event.winner:
+        flash("Cannot join event", "warning")
         return redirect(lib.get_redirect_url())
     
     if event.max_participants is not None and len(event.participants) >= event.max_participants:
@@ -644,6 +658,8 @@ def remove_round(event_id, round_id):
         return redirect(url_for("event", event_id=event_id))
     
     try:
+        for wager in round.wagers:
+            db.session.delete(wager)
         db.session.delete(round)
         db.session.commit()
     except Exception as e:

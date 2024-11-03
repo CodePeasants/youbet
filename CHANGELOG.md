@@ -1,4 +1,11 @@
 # Unreleased
+## Fixed
+- DIsallow joining or leaving an event that is not joinable, in the event the route is accessed. Before this change, users who had not refreshed the page and still had access to the join button could join or leave the event still.
+- Fixed wager outcome calculation. It would do a weird division before, now it just multiplies the correct component of the odds expression by the wager amount.
+    - We now require at least one component of the wager expression to be "1".
+- Express win/loss record, only considering the current event, not all rounds across all events.
+- Deleting a round will also delete all of its wagers.
+- Deleting an event will also delete all of its rounds, wagers and competitors.
 
 # 0.4.0 - 2024-10-30
 ## Added
