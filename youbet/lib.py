@@ -22,14 +22,19 @@ def reset_password(user, db):
         db.session.commit()
     except Exception as e:
         print(e)
+        flash(str(e), "error")
         return False
 
-    response = send_email(
-        from_address=settings.RESET_PASSWORD_SENDER_ADDRESS,
-        to_addresses=user.email,
-        subject="YouBet Password Reset",
-        html_content=f"<a>Your verification code is:</a><br><h1>{verification_code}</h1>"
-    )
+    try:
+        response = send_email(
+            from_address=settings.RESET_PASSWORD_SENDER_ADDRESS,
+            to_addresses=user.email,
+            subject="YouBet Password Reset",
+            html_content=f"<a>Your verification code is:</a><br><h1>{verification_code}</h1>"
+        )
+    except Exception as e:
+        flash(str(e), "error")
+        return False
     if not response:
         return False
     return True
